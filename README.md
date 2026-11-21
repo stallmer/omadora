@@ -62,6 +62,9 @@ hardware support and no desktop) and includes these customizations:
 - `sddm` is enabled and starts the `niri` session
 - `/etc/niri/config.kdl` starts Noctalia and points the launcher, lock, volume,
   microphone, media and brightness keys at `noctalia msg` commands
+- The Omadora menu (`Super+Alt+Space`, or `/om` in the launcher) is a Noctalia
+  launcher plugin shipped in `/usr/share/omadora/plugins/menu`: Style (theme, mode,
+  wallpaper), Setup, Install, Update and System, with sub-menus
 - `/etc/niri/omadora-binds.kdl`, included at the end of that config, adds
   Omarchy-style shortcuts on top of Niri's stock binds: `Super+Return` terminal,
   `Super+Space` launcher, `Super+Shift+B` browser (Firefox), `Super+E` file manager,

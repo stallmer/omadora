@@ -29,3 +29,15 @@ builtin = "Tokyo-Night"
 [theme.templates]
 enable_builtin_templates = true
 builtin_ids = ["alacritty", "niri", "gtk3", "gtk4"]
+
+# The Omadora menu: a launcher provider, opened with Super+Alt+Space or by
+# typing /om in the launcher. The plugin ships in the image as a read-only path
+# source.
+[plugins]
+enabled = ["omadora/menu"]
+
+[[plugins.source]]
+name = "omadora"
+kind = "path"
+location = "/usr/share/omadora/plugins"
+enabled = true

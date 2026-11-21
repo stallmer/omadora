@@ -14,8 +14,8 @@ binds {
     // Launching
     Mod+Return hotkey-overlay-title="Terminal: alacritty" { spawn "alacritty"; }
     Mod+Space hotkey-overlay-title="Launcher: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
-    // The Omadora menu will replace this; until then it opens the launcher on its provider list.
-    Mod+Alt+Space hotkey-overlay-title="Omadora menu" { spawn "noctalia" "msg" "panel-toggle" "launcher" "/"; }
+    // The Omadora menu is a launcher provider (custom/files/usr/share/omadora/plugins/menu).
+    Mod+Alt+Space hotkey-overlay-title="Omadora menu" { spawn "noctalia" "msg" "panel-toggle" "launcher" "/om "; }
 
     // Apps
     Mod+Shift+B hotkey-overlay-title="Browser: Firefox" { spawn "gtk-launch" "org.mozilla.firefox"; }
