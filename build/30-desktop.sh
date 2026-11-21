@@ -23,6 +23,7 @@ set -euo pipefail
 #
 #   power-profiles-daemon       optional Noctalia power-profile switching
 #   alacritty                   terminal (ghostty is not in the repositories)
+#   chezmoi                     applies the Omadora dotfiles on first login
 ###############################################################################
 
 echo "::group:: Install the Niri desktop"
@@ -37,7 +38,8 @@ dnf5 install -y \
 	gnome-keyring \
 	xwayland-satellite \
 	power-profiles-daemon \
-	alacritty
+	alacritty \
+	chezmoi
 
 echo "::endgroup::"
 
