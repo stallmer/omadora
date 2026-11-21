@@ -25,14 +25,25 @@ hardware support and no desktop) and includes these customizations:
   `gnome-keyring`
 - **Other**: `xwayland-satellite` (X11 apps), `power-profiles-daemon`,
   `alacritty` (terminal), `chezmoi` (dotfiles)
+- **Gaming**: `steam` and `steam-devices`, installed from the negativo17
+  repository that `base-main` enables during the build (the repository is
+  disabled again before the image ships)
 - **From the template**: `just`, `gum`, `fzf`, `jq`, and `uupd` (from the
   `ublue-os/packages` COPR)
 
 ### Added Applications (Runtime)
 
-- **CLI tools (Homebrew)**: none yet
-- **GUI apps (Flatpak)**: the template's defaults, Thunderbird, Flatseal and
-  Extension Manager; the Omadora app set is not decided yet
+- **CLI tools (Homebrew)**, installed on request with `ujust install-default-apps`
+  and `ujust install-dev-tools`:
+  - Default: `atuin`, `bash-preexec`, `bat`, `bbrew`, `direnv`, `dysk`, `eza`,
+    `fd`, `herdr`, `neovim`, `ripgrep`, `starship`, `syncthing`, `tealdeer`,
+    `television`, `trash-cli`, `ugrep`, `yq`, `zoxide`
+  - Development: `bats-core`, `gh`, `git-filter-repo`, `glab`, `shellcheck`,
+    `stress-ng`
+- **GUI apps (Flatpak)**, installed on first boot: Chromium, Firefox, Bitwarden,
+  KeePassXC, Obsidian, mpv, Chatterino, Moonlight, Convey, Protontricks,
+  ProtonPlus, Faugus Launcher, Flatseal, Warehouse, Gear Lever, Mission Center,
+  DistroShelf, virt-manager, Solaar and BudsLink
 
 ### Removed or Disabled
 

@@ -11,6 +11,7 @@ prefix auto-discovery. The numbers communicate intent.
 | `00-image-info.sh` | Writes the image identity into `os-release` and `image-info.json`: the base image name, the Fedora major derived from the base's `os-release`, the version string, and the tag. |
 | `10-overlay.sh` | Overlays `projectbluefin/common`'s shared layer and the Brew integration, copies this template's declarations (Brewfiles, ujust recipes, Flatpak preinstalls, `/etc/skel` seeds), and enables the units that consume them. Installs no packages. |
 | `20-packages-and-services.sh` | Installs the default RPM and COPR packages and enables their services. Packages live here, not in the overlay phase, so an overlay edit cannot invalidate the package layer. |
+| `25-steam.sh` | Installs Steam and `steam-devices` from the negativo17 repository that `base-main` enables during the build (`90-cleanup.sh` disables it again). A separate phase so the large layer stays stable. |
 | `30-desktop.sh` | Installs the Niri compositor, the Noctalia shell, SDDM and the desktop support packages, ships `/etc/niri/config.kdl` with Noctalia autostart, and enables SDDM. |
 | `90-cleanup.sh` | Finalises package and Flatpak sources, prunes build artifacts, and prepares for `bootc container lint`. |
 

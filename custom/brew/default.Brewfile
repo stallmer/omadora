@@ -1,3 +1,21 @@
-# Default Brewfile
-# Uncomment packages you want to install, or add your own.
+# Default Brewfile: the everyday command-line tools.
 # Users install via: ujust install-default-apps
+brew "atuin"
+brew "bash-preexec"
+brew "bat"
+brew "bbrew"
+brew "direnv"
+brew "dysk"
+brew "eza"
+brew "fd"
+brew "herdr"
+brew "neovim"
+brew "ripgrep"
+brew "starship"
+brew "syncthing"
+brew "tealdeer"
+brew "television"
+brew "trash-cli"
+brew "ugrep"
+brew "yq"
+brew "zoxide"

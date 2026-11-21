@@ -106,6 +106,16 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/20-packages-and-services.sh
 
+### STEAM
+## Installs Steam and the controller udev rules from the negativo17 repository
+## that base-main enables during the build.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/25-steam.sh
+
 ### DESKTOP
 ## Installs the Niri compositor and Noctalia shell and enables SDDM.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
