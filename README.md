@@ -12,29 +12,50 @@ It is built to be driven by hand or by an agent.
 
 ## What Makes this Raptor Different?
 
-Here are the changes from [Base Image Name]. This image is based on
-[Bluefin/Bazzite/Aurora/etc] and includes these customizations:
+Here are the changes from [`ublue-os/base-main`](https://github.com/ublue-os/base-main).
+This image is based on `base-main:44` (Fedora 44 Atomic with Universal Blue
+hardware support and no desktop) and includes these customizations:
 
 ### Added Packages (Build-time)
 
-- List the packages you install at build time
+- **Desktop**: `niri` (scrolling-tiling Wayland compositor), `noctalia` (the
+  shell: bar, launcher, notifications, lock screen, wallpaper, idle and night
+  light), `sddm` with the Wayland greeter (`sddm-wayland-generic`)
+- **Portals and keyring**: `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`,
+  `gnome-keyring`
+- **Other**: `xwayland-satellite` (X11 apps), `power-profiles-daemon`,
+  `alacritty` (terminal), `chezmoi` (dotfiles)
+- **From the template**: `just`, `gum`, `fzf`, `jq`, and `uupd` (from the
+  `ublue-os/packages` COPR)
 
 ### Added Applications (Runtime)
 
-- **CLI tools (Homebrew)**: list them
-- **GUI apps (Flatpak)**: list them
+- **CLI tools (Homebrew)**: none yet
+- **GUI apps (Flatpak)**: the template's defaults, Thunderbird, Flatseal and
+  Extension Manager; the Omadora app set is not decided yet
 
 ### Removed or Disabled
 
-- List anything removed from the base image
+- No GNOME or other desktop: `base-main` ships none
+- Third-party repositories, such as `fedora-multimedia` that `base-main`
+  enables, are disabled at the end of the build
+- Waybar, `swayidle` and `gammastep` are not used: Noctalia covers the bar,
+  idle and night light
 
 ### Configuration Changes
 
-- Systemd services enabled or disabled
-- Desktop environment changes
-- Other notable modifications
+- `sddm` is enabled and starts the `niri` session
+- `/etc/niri/config.kdl` starts Noctalia and points the launcher, lock, volume,
+  microphone, media and brightness keys at `noctalia msg` commands
+- `/etc/xdg/noctalia/10-omadora.toml` sets idle: lock after 10 minutes, screen
+  off after 11, suspend after 15
+- On first login, `omadora-setup` applies the public
+  [`omadora-dotfiles`](https://github.com/stallmer/omadora-dotfiles) with
+  chezmoi (rerun it by hand to re-apply)
+- `omadora-update` updates the system image, Flatpaks and Homebrew (through
+  `uupd`) and the dotfiles in one command
 
-_Last updated: [date]_
+_Last updated: November 21, 2026_
 
 > This section is what tells your users how your image differs from its base.
 > Update it whenever you add or remove a package, app, or service.
