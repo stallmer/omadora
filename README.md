@@ -64,6 +64,8 @@ hardware support and no desktop) and includes these customizations:
   microphone, media and brightness keys at `noctalia msg` commands
 - `/etc/xdg/noctalia/10-omadora.toml` sets idle: lock after 10 minutes, screen
   off after 11, suspend after 15
+  (Noctalia 5.6.0 or later reads this file on its own; Fedora 44 ships 5.4.1, so
+  the dotfiles load it with an include in `~/.config/noctalia/omadora.toml`)
 - On first login, `omadora-setup` applies the public
   [`omadora-dotfiles`](https://github.com/stallmer/omadora-dotfiles) with
   chezmoi (rerun it by hand to re-apply)
