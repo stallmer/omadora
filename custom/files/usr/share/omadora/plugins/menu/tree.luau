@@ -4,9 +4,11 @@
 
 local M = {}
 
--- The launcher's raw input is "/" + the manifest prefix. A result's `query`
--- rewrites that raw input, so drill-in links carry it.
-M.PREFIX = "/om"
+-- A result's `query` rewrites the launcher's input. Noctalia's plugin docs say
+-- the query must include the provider prefix, but Noctalia 5.4.1 (the version in
+-- Fedora 44) builds "/om " + query itself, so a query that repeats the prefix
+-- ends up as "/om /om style". Queries here therefore carry no prefix. Recheck
+-- this in the VM whenever Noctalia is upgraded.
 
 M.THEMES = {
   "Ayu", "Catppuccin", "Dracula", "Eldritch", "Gruvbox",
@@ -59,7 +61,7 @@ M.root = {
               action = argv("omadora-theme-set", "--mode", "auto") },
           } },
         { key = "wallpaper", title = "Wallpaper", subtitle = "Pick a wallpaper", glyph = "photo",
-          query = "/wall " },
+          action = argv("noctalia", "msg", "panel-toggle", "wallpaper") },
       } },
     { key = "setup", title = "Setup", subtitle = "Audio, network, printers and keybindings", glyph = "settings",
       children = {
@@ -120,12 +122,14 @@ local function find(node, id)
   return nil
 end
 
--- The raw launcher input that shows a node's children.
+-- The query (behind the prefix) that shows a node's children. The top level is a
+-- single space: an empty string might be read as "no query".
 local function queryFor(node)
   if node.path == "" then
-    return M.PREFIX .. " "
+    return " "
   end
-  return M.PREFIX .. " " .. string.gsub(node.path, "/", " ") .. " "
+  local words = string.gsub(node.path, "/", " ")
+  return words .. " "
 end
 
 -- Split the typed text (everything after the prefix) into the menu level it
@@ -182,8 +186,6 @@ function M.results(text, fuzzy)
       }
       if child.children then
         result.query = queryFor(child)
-      elseif child.query then
-        result.query = child.query
       end
       table.insert(results, result)
     end

@@ -20,7 +20,9 @@ function onActivate(id)
   elseif action.kind == "terminal" then
     noctalia.runInTerminal(action.cmd)
   elseif action.kind == "apps" then
-    -- Clear the input so the launcher goes back to searching applications.
-    launcher.setQuery("")
+    -- Activating without launcher.setQuery closes the launcher. Reopen a plain one
+    -- a moment later, so it is not a toggle that closes it again. This does not
+    -- depend on how a version of Noctalia builds the launcher's input.
+    noctalia.runAsync({ "sh", "-c", "sleep 0.3; exec noctalia msg panel-toggle launcher" })
   end
 end

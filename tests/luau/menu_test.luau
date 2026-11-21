@@ -40,15 +40,17 @@ end
 local top = tree.results("", fuzzy)
 check(titles(top) == "Apps,Style,Setup,Install,Update,System", "top level lists the six entries in order, got: " .. titles(top))
 check(top[1].query == nil, "Apps is a leaf and has no drill-in query")
-check(find(top, "Style").query == "/om style ", "Style drills into '/om style ', got: " .. tostring(find(top, "Style").query))
+check(find(top, "Style").query == "style ", "Style drills into 'style ' (no prefix), got: " .. tostring(find(top, "Style").query))
 check(find(top, "Update").query == nil, "Update is a leaf")
 
 -- Drilling in.
 local style = tree.results("style", fuzzy)
 check(titles(style) == "Back,Theme,Mode,Wallpaper", "style level, got: " .. titles(style))
-check(style[1].query == "/om ", "Back from style returns to the top, got: " .. tostring(style[1].query))
-check(find(style, "Theme").query == "/om style theme ", "Theme drills into '/om style theme '")
-check(find(style, "Wallpaper").query == "/wall ", "Wallpaper switches to the /wall provider")
+check(style[1].query == " ", "Back from style returns to the top with a single space, got: " .. tostring(style[1].query))
+check(find(style, "Theme").query == "style theme ", "Theme drills into 'style theme '")
+check(find(style, "Wallpaper").query == nil, "Wallpaper is an action, not a drill-in")
+local wallpaper = tree.action("style/wallpaper")
+check(wallpaper ~= nil and wallpaper.argv[3] == "panel-toggle" and wallpaper.argv[4] == "wallpaper", "Wallpaper opens the wallpaper panel")
 
 -- Leading and extra spaces are ignored, and case does not matter.
 check(titles(tree.results("  Style  ", fuzzy)) == titles(style), "whitespace and case are ignored")
@@ -56,7 +58,7 @@ check(titles(tree.results("  Style  ", fuzzy)) == titles(style), "whitespace and
 -- The theme list has all ten themes plus Back, and activating one sets it.
 local themes = tree.results("style theme", fuzzy)
 check(#themes == 11, "theme level has Back plus ten themes, got " .. #themes)
-check(themes[1].query == "/om style ", "Back from theme returns to style")
+check(themes[1].query == "style ", "Back from theme returns to style")
 local gruvbox = find(themes, "Gruvbox")
 check(gruvbox ~= nil and gruvbox.id == "style/theme/gruvbox", "Gruvbox id is its path")
 local action = tree.action("style/theme/gruvbox")
@@ -95,6 +97,22 @@ local lock = tree.action("system/lock")
 check(lock.argv[1] == "noctalia" and lock.argv[4] == "lock", "Lock runs noctalia msg session lock")
 check(tree.action("setup/keybindings").argv[4] == "show-hotkey-overlay", "Keybindings shows Niri's hotkey overlay")
 check(tree.action("setup/printers").argv[1] == "system-config-printer", "Printers opens the printer setup")
+
+-- No query repeats the provider prefix: Noctalia 5.4.1 prepends it itself.
+local function noPrefix(text)
+  for _, r in ipairs(tree.results(text, fuzzy)) do
+    if r.query ~= nil then
+      check(string.sub(r.query, 1, 1) ~= "/", "query '" .. r.query .. "' must not start with a prefix")
+    end
+  end
+end
+noPrefix("")
+noPrefix("style")
+noPrefix("style theme")
+noPrefix("setup")
+
+-- Apps reopens a plain launcher instead of setting a prefixed query.
+check(tree.action("apps").kind == "apps", "Apps keeps its own action kind")
 
 -- Unknown ids and non-leaf ids have no action.
 check(tree.action("nope") == nil, "unknown id has no action")

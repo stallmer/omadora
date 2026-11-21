@@ -32,7 +32,8 @@ builtin_ids = ["alacritty", "niri", "gtk3", "gtk4"]
 
 # The Omadora menu: a launcher provider, opened with Super+Alt+Space or by
 # typing /om in the launcher. The plugin ships in the image as a read-only path
-# source.
+# source. Setting [[plugins.source]] replaces Noctalia's default list instead of
+# adding to it, so its two default git sources are repeated here.
 [plugins]
 enabled = ["omadora/menu"]
 
@@ -40,4 +41,16 @@ enabled = ["omadora/menu"]
 name = "omadora"
 kind = "path"
 location = "/usr/share/omadora/plugins"
+enabled = true
+
+[[plugins.source]]
+name = "official"
+kind = "git"
+location = "https://github.com/noctalia-dev/official-plugins"
+enabled = true
+
+[[plugins.source]]
+name = "community"
+kind = "git"
+location = "https://github.com/noctalia-dev/community-plugins"
 enabled = true
