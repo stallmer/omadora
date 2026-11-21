@@ -106,6 +106,15 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/20-packages-and-services.sh
 
+### DESKTOP
+## Installs the Niri compositor and Noctalia shell and enables SDDM.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/30-desktop.sh
+
 ### CLEANUP
 ## Finalises package and Flatpak sources, then prunes build artifacts before
 ## linting. /run is deliberately not mounted as tmpfs here: the script must
