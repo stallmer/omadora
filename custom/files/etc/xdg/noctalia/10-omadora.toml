@@ -1,0 +1,20 @@
+# Omadora system defaults for Noctalia. A user's ~/.config/noctalia overrides these.
+# Timeouts are seconds of idle time: lock at 10 minutes, screen off at 11, suspend at 15.
+
+[idle]
+behavior_order = ["lock", "screen-off", "suspend"]
+
+[idle.behavior.lock]
+timeout = 600
+action = "lock"
+enabled = true
+
+[idle.behavior.screen-off]
+timeout = 660
+action = "screen_off"
+enabled = true
+
+[idle.behavior.suspend]
+timeout = 900
+action = "lock_and_suspend"
+enabled = true
