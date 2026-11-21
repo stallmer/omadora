@@ -34,14 +34,43 @@ fi
 ((only_system)) && do_dotfiles=0
 ((only_dotfiles)) && do_system=0
 
+# uupd refuses to run while the network is busy, which is common right after
+# first boot (Homebrew and Flatpaks download). The unit restarts itself after
+# 60 seconds, but a single start still reports failure, so retry here too.
+# OMADORA_UPDATE_RETRY_DELAY overrides the wait, in seconds.
+retry_delay="${OMADORA_UPDATE_RETRY_DELAY:-60}"
+attempts=3
+
 staged=0
 if ((do_system)); then
 	echo "==> Updating the system image, Flatpaks and Homebrew"
-	# The same service the update timer runs; it carries the SELinux context bootc needs.
-	sudo systemctl start uupd.service
-	if sudo bootc status --json | jq -e '.status.staged != null' >/dev/null; then
-		staged=1
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		# The same service the update timer runs; it carries the SELinux context bootc needs.
+		if sudo systemctl start uupd.service; then
+			break
+		fi
+		if ((attempt == attempts)); then
+			echo "omadora-update: uupd failed ${attempts} times; see 'journalctl -u uupd.service'" >&2
+			exit 1
+		fi
+		echo "omadora-update: uupd failed, usually because the network is busy; retrying in ${retry_delay} seconds (attempt ${attempt} of ${attempts})" >&2
+		sleep "${retry_delay}"
+	done
+
+	if ! boot_status="$(sudo bootc status --json)"; then
+		echo "omadora-update: 'bootc status' failed, so I cannot tell whether a new system image is staged" >&2
+		exit 1
 	fi
+	jq_status=0
+	jq -e '.status.staged != null' <<<"${boot_status}" >/dev/null || jq_status=$?
+	case "${jq_status}" in
+		0) staged=1 ;;
+		1) ;;
+		*)
+			echo "omadora-update: could not read the output of 'bootc status'" >&2
+			exit 1
+			;;
+	esac
 fi
 
 if ((do_dotfiles)); then

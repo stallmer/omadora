@@ -3,7 +3,9 @@
 #
 # sudo, systemctl, bootc, jq and omadora-setup are stubbed on PATH. Each stub
 # appends its arguments to one shared log, so the tests can check order.
-# STAGED=1 makes the bootc and jq stubs report a staged system image.
+# STAGED=1 makes the jq stub report a staged system image. UUPD_FAILS=n makes the
+# first n `systemctl start uupd.service` calls fail (a large n fails them all).
+# BOOTC_FAIL=1 makes `bootc status` fail; JQ_FAIL=1 makes jq exit with an error.
 #
 # Run with: bats tests/template/omadora-update_test.bats
 
@@ -24,17 +26,22 @@ STUB
 	cat >"${STUB_BIN}/systemctl" <<'STUB'
 #!/usr/bin/bash
 printf 'systemctl %s\n' "$*" >> "${CALL_LOG}"
-[ -n "${UUPD_FAIL:-}" ] && [ "$1 $2" = "start uupd.service" ] && exit 1
+if [ "$1 $2" = "start uupd.service" ] && [ -n "${UUPD_FAILS:-}" ]; then
+  n="$(grep -c '^systemctl start uupd.service$' "${CALL_LOG}")"
+  [ "$n" -le "${UUPD_FAILS}" ] && exit 1
+fi
 exit 0
 STUB
 	cat >"${STUB_BIN}/bootc" <<'STUB'
 #!/usr/bin/bash
 printf 'bootc %s\n' "$*" >> "${CALL_LOG}"
+[ -n "${BOOTC_FAIL:-}" ] && exit 1
 echo '{}'
 STUB
 	cat >"${STUB_BIN}/jq" <<'STUB'
 #!/usr/bin/bash
 cat >/dev/null
+[ -n "${JQ_FAIL:-}" ] && exit 5
 [ -n "${STAGED:-}" ]
 STUB
 	cat >"${STUB_BIN}/omadora-setup" <<'STUB'
@@ -47,7 +54,8 @@ STUB
 
 	export PATH="${STUB_BIN}:${PATH}"
 	export CALL_LOG
-	unset STAGED UUPD_FAIL SETUP_FAIL
+	export OMADORA_UPDATE_RETRY_DELAY=0
+	unset STAGED UUPD_FAILS SETUP_FAIL BOOTC_FAIL JQ_FAIL
 }
 
 @test "omadora-update: the default run updates the system and then the dotfiles" {
@@ -115,11 +123,39 @@ STUB
 	[ "$output" = "0" ]
 }
 
-@test "omadora-update: a failed system update stops before the dotfiles" {
-	UUPD_FAIL=1 run "${UPDATE_SRC}"
-	[ "$status" -ne 0 ]
+@test "omadora-update: a failed uupd start is retried and the run then succeeds" {
+	UUPD_FAILS=1 run "${UPDATE_SRC}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"retrying in 0 seconds (attempt 1 of 3)"* ]]
+	run grep -c '^systemctl start uupd.service$' "${CALL_LOG}"
+	[ "$output" = "2" ]
+	run grep -c "^omadora-setup" "${CALL_LOG}"
+	[ "$output" = "1" ]
+}
+
+@test "omadora-update: uupd failing three times stops before the dotfiles" {
+	UUPD_FAILS=99 run "${UPDATE_SRC}"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"uupd failed 3 times"* ]]
+	run grep -c '^systemctl start uupd.service$' "${CALL_LOG}"
+	[ "$output" = "3" ]
 	run grep -c omadora-setup "${CALL_LOG}"
 	[ "$output" = "0" ]
+}
+
+@test "omadora-update: a failing bootc status is an error, not 'nothing staged'" {
+	BOOTC_FAIL=1 run "${UPDATE_SRC}"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"'bootc status' failed"* ]]
+	[[ "$output" != *"Up to date"* ]]
+	run grep -c omadora-setup "${CALL_LOG}"
+	[ "$output" = "0" ]
+}
+
+@test "omadora-update: unreadable bootc status output is an error" {
+	JQ_FAIL=1 run "${UPDATE_SRC}"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"could not read the output of 'bootc status'"* ]]
 }
 
 @test "omadora-update: a failed dotfiles update exits 1 and suggests --force" {
