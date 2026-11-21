@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Update Omadora: the system image, Flatpaks and Homebrew (through uupd), then
+# the dotfiles.
+#   omadora-update             update everything
+#   omadora-update --system    only the system image, Flatpaks and Homebrew
+#   omadora-update --dotfiles  only the dotfiles
+#   omadora-update --reboot    reboot afterwards if a new system image was staged
+set -euo pipefail
+
+do_system=1
+do_dotfiles=1
+reboot=0
+only_system=0
+only_dotfiles=0
+for arg in "$@"; do
+	case "${arg}" in
+		--system) only_system=1 ;;
+		--dotfiles) only_dotfiles=1 ;;
+		--reboot) reboot=1 ;;
+		-h | --help)
+			sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
+			exit 0
+			;;
+		*)
+			echo "usage: omadora-update [--system|--dotfiles] [--reboot]" >&2
+			exit 2
+			;;
+	esac
+done
+if ((only_system && only_dotfiles)); then
+	echo "omadora-update: --system and --dotfiles cannot be combined; run it with no option for both" >&2
+	exit 2
+fi
+((only_system)) && do_dotfiles=0
+((only_dotfiles)) && do_system=0
+
+staged=0
+if ((do_system)); then
+	echo "==> Updating the system image, Flatpaks and Homebrew"
+	# The same service the update timer runs; it carries the SELinux context bootc needs.
+	sudo systemctl start uupd.service
+	if sudo bootc status --json | jq -e '.status.staged != null' >/dev/null; then
+		staged=1
+	fi
+fi
+
+if ((do_dotfiles)); then
+	echo "==> Updating the dotfiles"
+	omadora-setup || {
+		echo "omadora-update: the dotfiles update failed; 'omadora-setup --force' overwrites local changes" >&2
+		exit 1
+	}
+fi
+
+if ((staged)); then
+	if ((reboot)); then
+		echo "==> Rebooting into the new system image"
+		sudo systemctl reboot
+	else
+		echo "==> A new system image is staged. Reboot to run it."
+	fi
+else
+	echo "==> Up to date"
+fi
