@@ -116,6 +116,13 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/25-steam.sh
 
+### FONTS
+## Installs the JetBrains Mono Nerd Font from the pinned Nerd Fonts release.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/27-fonts.sh
+
 ### DESKTOP
 ## Installs the Niri compositor and Noctalia shell and enables SDDM.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \

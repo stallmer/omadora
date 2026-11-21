@@ -24,6 +24,9 @@ set -euo pipefail
 #   power-profiles-daemon       optional Noctalia power-profile switching
 #   alacritty                   terminal (ghostty is not in the repositories)
 #   chezmoi                     applies the Omadora dotfiles on first login
+#   nautilus                    file manager
+#   imv                         image viewer
+#   system-config-printer       printer setup (cups is already in the image)
 ###############################################################################
 
 echo "::group:: Install the Niri desktop"
@@ -39,7 +42,10 @@ dnf5 install -y \
 	xwayland-satellite \
 	power-profiles-daemon \
 	alacritty \
-	chezmoi
+	chezmoi \
+	nautilus \
+	imv \
+	system-config-printer
 
 echo "::endgroup::"
 

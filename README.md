@@ -25,6 +25,10 @@ hardware support and no desktop) and includes these customizations:
   `gnome-keyring`
 - **Other**: `xwayland-satellite` (X11 apps), `power-profiles-daemon`,
   `alacritty` (terminal), `chezmoi` (dotfiles)
+- **Everyday apps**: `nautilus` (file manager), `imv` (image viewer),
+  `system-config-printer` (printer setup)
+- **Fonts**: JetBrains Mono Nerd Font (from the Nerd Fonts release, pinned by
+  checksum; Fedora has no Nerd Font package)
 - **Gaming**: `steam` and `steam-devices`, installed from the negativo17
   repository that `base-main` enables during the build (the repository is
   disabled again before the image ships)
