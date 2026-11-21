@@ -18,3 +18,14 @@ enabled = true
 timeout = 900
 action = "lock_and_suspend"
 enabled = true
+
+# Theme. Noctalia re-renders the enabled templates into the apps' config
+# whenever the palette changes. Switch with `omadora-theme-set`.
+[theme]
+mode = "dark"
+source = "builtin"
+builtin = "Tokyo-Night"
+
+[theme.templates]
+enable_builtin_templates = true
+builtin_ids = ["alacritty", "niri", "gtk3", "gtk4"]
