@@ -62,6 +62,12 @@ hardware support and no desktop) and includes these customizations:
 - `sddm` is enabled and starts the `niri` session
 - `/etc/niri/config.kdl` starts Noctalia and points the launcher, lock, volume,
   microphone, media and brightness keys at `noctalia msg` commands
+- `/etc/niri/omadora-binds.kdl`, included at the end of that config, adds
+  Omarchy-style shortcuts on top of Niri's stock binds: `Super+Return` terminal,
+  `Super+Space` launcher, `Super+Shift+B` browser (Firefox), `Super+E` file manager,
+  `Super+Shift+O` Obsidian, `Super+W` close window (the tabbed-column toggle moves
+  to `Super+Shift+W`), `Super+Shift+S` region screenshot, `Super+Ctrl+V` clipboard
+  history and `Super+Shift+Escape` session menu; `Super+Shift+/` lists them all
 - `/etc/xdg/noctalia/10-omadora.toml` sets idle: lock after 10 minutes, screen
   off after 11, suspend after 15
   (Noctalia 5.6.0 or later reads this file on its own; Fedora 44 ships 5.4.1, so

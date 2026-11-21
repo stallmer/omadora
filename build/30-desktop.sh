@@ -95,6 +95,17 @@ rebind '{ spawn-sh "playerctl next"; }' '{ spawn "noctalia" "msg" "media" "next"
 rebind '{ spawn "brightnessctl" "--class=backlight" "set" "+10%"; }' '{ spawn "noctalia" "msg" "brightness-up"; }'
 rebind '{ spawn "brightnessctl" "--class=backlight" "set" "10%-"; }' '{ spawn "noctalia" "msg" "brightness-down"; }'
 
+# Omadora's own keybindings (custom/files/etc/niri/omadora-binds.kdl) are included
+# last, so they can override stock binds. The relative path resolves against
+# /etc/niri.
+if ! grep -qx 'include "omadora-binds.kdl"' /etc/niri/config.kdl; then
+	printf '\ninclude "omadora-binds.kdl"\n' >>/etc/niri/config.kdl
+fi
+
+# Fail the build on a config niri rejects, such as a duplicate key in a binds
+# block or a missing include.
+niri validate -c /etc/niri/config.kdl
+
 echo "::endgroup::"
 
 echo "::group:: Enable the display manager"
