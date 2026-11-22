@@ -97,10 +97,14 @@ if ((do_system)); then
 		sleep "${retry_delay}"
 	done
 
-	if ! boot_status="$(sudo bootc status --json)"; then
+	if ! boot_status_raw="$(sudo bootc status --json)"; then
 		echo "omadora-update: 'bootc status' failed, so I cannot tell whether a new system image is staged" >&2
 		exit 1
 	fi
+	# On a machine installed from the ISO, bootc's mount call prints a hint on stdout
+	# ("mount: (hint) your fstab has been modified, but systemd still uses the old
+	# version ...") ahead of the JSON. Keep only the JSON, from its first line.
+	boot_status="$(printf '%s\n' "${boot_status_raw}" | sed -n '/^[[:space:]]*{/,$p')"
 	jq_status=0
 	jq -e '.status.staged != null' <<<"${boot_status}" >/dev/null || jq_status=$?
 	case "${jq_status}" in

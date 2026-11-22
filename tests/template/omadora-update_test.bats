@@ -6,6 +6,9 @@
 # STAGED=1 makes the jq stub report a staged system image. UUPD_FAILS=n makes the
 # first n `systemctl start uupd.service` calls fail (a large n fails them all).
 # BOOTC_FAIL=1 makes `bootc status` fail; JQ_FAIL=1 makes jq exit with an error.
+# BOOTC_NOISE=1 makes `bootc status --json` print the fstab hint ahead of the JSON, as
+# it does on a machine installed from the ISO. The jq stub rejects input that does
+# not start with a JSON object, as the real jq would.
 # After a failed start the script reads `systemctl show uupd.service`: ACTIVE_SEQ is a
 # space-separated list of ActiveState values, one per check (the last repeats), and
 # RESULT is the Result value (default success).
@@ -51,11 +54,20 @@ STUB
 #!/usr/bin/bash
 printf 'bootc %s\n' "$*" >> "${CALL_LOG}"
 [ -n "${BOOTC_FAIL:-}" ] && exit 1
+if [ -n "${BOOTC_NOISE:-}" ]; then
+  echo "mount: (hint) your fstab has been modified, but systemd still uses"
+  echo "       the old version; use 'systemctl daemon-reload' to reload."
+fi
+if [ -n "${BOOTC_GARBAGE:-}" ]; then echo "not json at all"; exit 0; fi
 echo '{}'
 STUB
 	cat >"${STUB_BIN}/jq" <<'STUB'
 #!/usr/bin/bash
-cat >/dev/null
+input="$(cat)"
+case "${input}" in
+  "{"*) ;;
+  *) echo "jq: parse error: Invalid numeric literal at line 1, column 6" >&2; exit 2 ;;
+esac
 [ -n "${JQ_FAIL:-}" ] && exit 5
 [ -n "${STAGED:-}" ]
 STUB
@@ -71,7 +83,7 @@ STUB
 	export CALL_LOG
 	export OMADORA_UPDATE_RETRY_DELAY=0
 	export OMADORA_UPDATE_POLL_INTERVAL=0
-	unset STAGED UUPD_FAILS SETUP_FAIL BOOTC_FAIL JQ_FAIL ACTIVE_SEQ RESULT OMADORA_UPDATE_POLL_LIMIT
+	unset STAGED UUPD_FAILS SETUP_FAIL BOOTC_FAIL JQ_FAIL BOOTC_NOISE BOOTC_GARBAGE ACTIVE_SEQ RESULT OMADORA_UPDATE_POLL_LIMIT
 }
 
 @test "omadora-update: the default run updates the system and then the dotfiles" {
@@ -202,6 +214,24 @@ STUB
 	[[ "$output" != *"Up to date"* ]]
 	run grep -c omadora-setup "${CALL_LOG}"
 	[ "$output" = "0" ]
+}
+
+@test "omadora-update: the fstab hint that bootc prints before the JSON is ignored" {
+	BOOTC_NOISE=1 run "${UPDATE_SRC}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Up to date"* ]]
+}
+
+@test "omadora-update: with the fstab hint present a staged image is still detected and --reboot reboots" {
+	BOOTC_NOISE=1 STAGED=1 run "${UPDATE_SRC}" --reboot
+	[ "$status" -eq 0 ]
+	[ "$(tail -n1 "${CALL_LOG}")" = "systemctl reboot" ]
+}
+
+@test "omadora-update: output with no JSON object at all is still an error" {
+	BOOTC_GARBAGE=1 run "${UPDATE_SRC}"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"could not read the output of 'bootc status'"* ]]
 }
 
 @test "omadora-update: unreadable bootc status output is an error" {
