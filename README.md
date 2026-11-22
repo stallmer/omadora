@@ -84,6 +84,9 @@ hardware support and no desktop) and includes these customizations:
   chezmoi (rerun it by hand to re-apply)
 - `omadora-update` updates the system image, Flatpaks and Homebrew (through
   `uupd`) and the dotfiles in one command
+- A drop-in for `systemd-remount-fs.service` skips it when `/` is a read-only
+  composefs overlay, so a machine installed from the ISO does not report a failed
+  unit
 - Theming comes from Noctalia: the default palette is Tokyo-Night in dark mode,
   and Noctalia re-renders the Alacritty, Niri and GTK themes whenever the palette
   changes. `omadora-theme-set` switches among Noctalia's ten bundled palettes
