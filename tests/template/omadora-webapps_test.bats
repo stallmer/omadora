@@ -2,8 +2,8 @@
 # Tests for the web app commands: omadora-launch-webapp, omadora-webapp-install and
 # omadora-webapp-remove, plus the default list the first-login hook installs.
 #
-# flatpak, curl and update-desktop-database are stubbed on PATH. HOME and
-# XDG_DATA_HOME point into a sandbox.
+# flatpak, curl, niri and update-desktop-database are stubbed on PATH (jq is the
+# real one). HOME and XDG_DATA_HOME point into a sandbox.
 #
 # Run with: bats tests/template/omadora-webapps_test.bats
 
@@ -29,21 +29,40 @@ printf 'flatpak %s\n' "$*" >> "${CALL_LOG}"
 if [ "$1" = "info" ] && [ -n "${FLATPAK_MISSING:-}" ]; then exit 1; fi
 exit 0
 STUB
-	# curl: writes a PNG (or HTML when CURL_BODY=html) to the -o target, or fails.
+	# curl: writes the -o target based on the URL. A *.png or /static/ URL gets a PNG,
+	# except /apple-touch-icon.png when CURL_SPA is set (a single-page app that
+	# answers every path with HTML, like Fastmail). Any other URL gets the page in
+	# CURL_PAGE, or HTML. CURL_BODY=html makes every answer HTML; CURL_FAIL fails.
 	cat >"${STUB_BIN}/curl" <<'STUB'
 #!/usr/bin/bash
 printf 'curl %s\n' "$*" >> "${CALL_LOG}"
 [ -n "${CURL_FAIL:-}" ] && exit 22
 dest=""
+url=""
 while [ $# -gt 0 ]; do
-  [ "$1" = "-o" ] && dest="$2"
+  case "$1" in
+    -o) dest="$2"; shift ;;
+    http*) url="$1" ;;
+  esac
   shift
 done
-if [ "${CURL_BODY:-png}" = "html" ]; then
-  printf '<html>not an image</html>' > "${dest}"
-else
-  printf '\x89PNG\r\n\x1a\n....' > "${dest}"
-fi
+png() { printf '\x89PNG\r\n\x1a\n....' > "${dest}"; }
+html() { printf '<html>not an image</html>' > "${dest}"; }
+if [ "${CURL_BODY:-}" = "html" ]; then html; exit 0; fi
+case "${url}" in
+  */apple-touch-icon.png) if [ -n "${CURL_SPA:-}" ]; then html; else png; fi ;;
+  */static/* | *.png) png ;;
+  *) if [ -n "${CURL_PAGE:-}" ]; then cat "${CURL_PAGE}" > "${dest}"; else html; fi ;;
+esac
+STUB
+	# niri: `msg --json windows` prints NIRI_WINDOWS (a file); other calls are logged.
+	# NIRI_FAIL makes it fail, as when no compositor is running.
+	cat >"${STUB_BIN}/niri" <<'STUB'
+#!/usr/bin/bash
+printf 'niri %s\n' "$*" >> "${CALL_LOG}"
+[ -n "${NIRI_FAIL:-}" ] && exit 1
+if [ "$1 $2 $3" = "msg --json windows" ]; then cat "${NIRI_WINDOWS:-/dev/null}"; fi
+exit 0
 STUB
 	cat >"${STUB_BIN}/update-desktop-database" <<'STUB'
 #!/usr/bin/bash
@@ -55,7 +74,7 @@ STUB
 	export HOME="${TEST_ROOT}/home"
 	export XDG_DATA_HOME="${HOME}/.local/share"
 	export CALL_LOG
-	unset FLATPAK_MISSING CURL_FAIL CURL_BODY
+	unset FLATPAK_MISSING CURL_FAIL CURL_BODY CURL_SPA CURL_PAGE NIRI_FAIL NIRI_WINDOWS
 	DESKTOP="${XDG_DATA_HOME}/applications/omadora-webapp-fastmail.desktop"
 }
 
@@ -81,6 +100,51 @@ STUB
 	[[ "$output" == *"not installed yet"* ]]
 	run grep -c 'flatpak run' "${CALL_LOG}"
 	[ "$output" = "0" ]
+}
+
+# A windows list as `niri msg --json windows` prints it.
+windows_json() {
+	printf '[{"id": 4, "app_id": "%s", "title": "x"}, {"id": 9, "app_id": "org.gnome.Nautilus", "title": "y"}]' "$1" >"${TEST_ROOT}/windows.json"
+	export NIRI_WINDOWS="${TEST_ROOT}/windows.json"
+}
+
+@test "launch: an open window for the site is focused instead of launching another" {
+	windows_json "chrome-app.fastmail.com__mail_Inbox_-Default"
+	run "${LAUNCH}" "https://app.fastmail.com/mail/Inbox/"
+	[ "$status" -eq 0 ]
+	grep -qx 'niri msg action focus-window --id 4' "${CALL_LOG}"
+	run grep -c 'flatpak run' "${CALL_LOG}"
+	[ "$output" = "0" ]
+}
+
+@test "launch: no window for the site means a new one is launched" {
+	windows_json "chrome-other.example.com__-Default"
+	run "${LAUNCH}" "https://app.fastmail.com/mail/Inbox/"
+	[ "$status" -eq 0 ]
+	grep -qx 'flatpak run org.chromium.Chromium --app=https://app.fastmail.com/mail/Inbox/' "${CALL_LOG}"
+	run grep -c 'focus-window' "${CALL_LOG}"
+	[ "$output" = "0" ]
+}
+
+@test "launch: it still launches when niri is not available" {
+	NIRI_FAIL=1 run "${LAUNCH}" "https://app.fastmail.com/mail/Inbox/"
+	[ "$status" -eq 0 ]
+	grep -qx 'flatpak run org.chromium.Chromium --app=https://app.fastmail.com/mail/Inbox/' "${CALL_LOG}"
+}
+
+@test "launch: the window id follows Chromium's naming for each url shape" {
+	# url -> the app id Chromium gives the window.
+	check() {
+		windows_json "$2"
+		: >"${CALL_LOG}"
+		run "${LAUNCH}" "$1"
+		[ "$status" -eq 0 ]
+		grep -qx 'niri msg action focus-window --id 4' "${CALL_LOG}"
+	}
+	check "https://example.com/" "chrome-example.com__-Default"
+	check "https://example.com" "chrome-example.com__-Default"
+	check "https://example.com/a/b" "chrome-example.com__a_b-Default"
+	check "https://example.com/a/b/?x=1#frag" "chrome-example.com__a_b_-Default"
 }
 
 # --- omadora-webapp-install ------------------------------------------------
@@ -160,6 +224,55 @@ STUB
 	[ "$status" -eq 2 ]
 	run "${INSTALL}" "!!!" "https://example.com"
 	[ "$status" -eq 2 ]
+}
+
+write_page() {
+	cat >"${TEST_ROOT}/page.html" <<'HTML'
+<html><head>
+<link rel="apple-touch-icon" sizes="180x180" href="/static/favicons/FM-App-Icon-180.png">
+<link rel="shortcut icon" sizes="192x192" href="/static/favicons/FM-App-Icon-192.png">
+<link rel="shortcut icon" sizes="512x512" href="/static/favicons/FM-App-Icon-512.png">
+<link id="favicon" rel="shortcut icon" sizes="32x32" href="/static/favicons/icon-32x32.png">
+</head><body></body></html>
+HTML
+	export CURL_PAGE="${TEST_ROOT}/page.html"
+}
+
+@test "install: it uses the largest PNG the page declares, even when /apple-touch-icon.png is HTML" {
+	write_page
+	CURL_SPA=1 run "${INSTALL}" Fastmail "https://app.fastmail.com/mail/Inbox/"
+	[ "$status" -eq 0 ]
+	grep -qF 'https://app.fastmail.com/static/favicons/FM-App-Icon-512.png' "${CALL_LOG}"
+	run grep -c 'apple-touch-icon.png' "${CALL_LOG}"
+	[ "$output" = "0" ]
+	grep -qx "Icon=${XDG_DATA_HOME}/omadora/webapps/icons/fastmail.png" "${DESKTOP}"
+}
+
+@test "install: relative, root-relative and protocol-relative icon links all resolve" {
+	cat >"${TEST_ROOT}/page.html" <<'HTML'
+<link rel="icon" sizes="64x64" href="icons/a.png">
+HTML
+	export CURL_PAGE="${TEST_ROOT}/page.html"
+	CURL_SPA=1 run "${INSTALL}" One "https://example.com/app/index.html"
+	grep -qF 'https://example.com/app/icons/a.png' "${CALL_LOG}"
+
+	printf '<link rel="icon" href="//cdn.example.com/b.png">' >"${TEST_ROOT}/page.html"
+	: >"${CALL_LOG}"
+	CURL_SPA=1 run "${INSTALL}" Two "https://example.com/x/"
+	grep -qF 'https://cdn.example.com/b.png' "${CALL_LOG}"
+
+	printf '<link rel="icon" href="/c.png">' >"${TEST_ROOT}/page.html"
+	: >"${CALL_LOG}"
+	CURL_SPA=1 run "${INSTALL}" Three "https://example.com/x/y/"
+	grep -qF 'https://example.com/c.png' "${CALL_LOG}"
+}
+
+@test "install: a page with only non-PNG icon links falls back to the generic icon" {
+	printf '<link rel="icon" type="image/svg+xml" href="/icon.svg">\n<link rel="shortcut icon" href="/favicon.ico">' >"${TEST_ROOT}/page.html"
+	export CURL_PAGE="${TEST_ROOT}/page.html"
+	CURL_SPA=1 run "${INSTALL}" Fastmail "https://app.fastmail.com/"
+	[ "$status" -eq 0 ]
+	grep -qx 'Icon=web-browser' "${DESKTOP}"
 }
 
 @test "install: running it twice updates the same single entry" {

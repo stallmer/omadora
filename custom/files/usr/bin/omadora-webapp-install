@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Add a web app to the launcher: a site that opens in its own Chromium window.
 #   omadora-webapp-install <name> <url> [icon-file-or-url]
-# Without an icon it tries the site's own apple-touch-icon.png, then falls back to a
-# generic icon. Running it again for the same name updates the entry.
+# Without an icon it uses the page's own icon links (the largest PNG), then the
+# well-known /apple-touch-icon.png, then a generic icon. Running it again for the
+# same name updates the entry.
 set -euo pipefail
 
 usage() {
@@ -64,7 +65,54 @@ if [[ -n "${icon_arg}" ]]; then
 	icon="${icon_dir}/${slug}.${ext}"
 else
 	origin="$(printf '%s' "${url}" | sed -E 's|^(https?://[^/]+).*|\1|')"
-	if curl -fsSL --max-time 10 -o "${workdir}/auto.png" "${origin}/apple-touch-icon.png" 2>/dev/null && is_png "${workdir}/auto.png"; then
+
+	# The directory a relative icon link resolves against.
+	base="${url%%[?#]*}"
+	if [[ "${base}" == "${origin}" ]]; then
+		page_dir="${origin}/"
+	elif [[ "${base}" == */ ]]; then
+		page_dir="${base}"
+	else
+		page_dir="${base%/*}/"
+	fi
+
+	resolve_href() {
+		case "$1" in
+			http://* | https://*) printf '%s' "$1" ;;
+			//*) printf '%s:%s' "${url%%:*}" "$1" ;;
+			/*) printf '%s%s' "${origin}" "$1" ;;
+			*) printf '%s%s' "${page_dir}" "$1" ;;
+		esac
+	}
+
+	# Icon links in the page, largest declared size first: "<size> <href>" per line.
+	page_icon_candidates() {
+		[[ -s "${workdir}/page.html" ]] || return 0
+		grep -o -i -E '<link[^>]*>' "${workdir}/page.html" | grep -i -E 'rel="[^"]*icon[^"]*"' |
+			while IFS= read -r tag; do
+				href="$(printf '%s' "${tag}" | sed -nE 's/.*[[:space:]]href="([^"]*)".*/\1/Ip')"
+				size="$(printf '%s' "${tag}" | sed -nE 's/.*[[:space:]]sizes="([0-9]+)x[0-9]+.*/\1/Ip')"
+				[[ -n "${href}" ]] && printf '%s %s\n' "${size:-0}" "${href}"
+			done | sort -rn -s -k1,1 | awk '!seen[$2]++ {print $2}' | head -5
+	}
+
+	try_icon_url() {
+		curl -fsSL --max-time 10 -o "${workdir}/auto.png" "$1" 2>/dev/null && is_png "${workdir}/auto.png"
+	}
+
+	found=""
+	curl -fsSL --max-time 10 -o "${workdir}/page.html" "${url}" 2>/dev/null || true
+	while IFS= read -r href; do
+		[[ -n "${href}" ]] || continue
+		if try_icon_url "$(resolve_href "${href}")"; then
+			found=1
+			break
+		fi
+	done < <(page_icon_candidates)
+	if [[ -z "${found}" ]] && try_icon_url "${origin}/apple-touch-icon.png"; then
+		found=1
+	fi
+	if [[ -n "${found}" ]]; then
 		rm -f "${icon_dir}/${slug}".*
 		install -m 0644 "${workdir}/auto.png" "${icon_dir}/${slug}.png"
 		icon="${icon_dir}/${slug}.png"
