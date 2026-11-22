@@ -6,6 +6,9 @@
 # STAGED=1 makes the jq stub report a staged system image. UUPD_FAILS=n makes the
 # first n `systemctl start uupd.service` calls fail (a large n fails them all).
 # BOOTC_FAIL=1 makes `bootc status` fail; JQ_FAIL=1 makes jq exit with an error.
+# After a failed start the script reads `systemctl show uupd.service`: ACTIVE_SEQ is a
+# space-separated list of ActiveState values, one per check (the last repeats), and
+# RESULT is the Result value (default success).
 #
 # Run with: bats tests/template/omadora-update_test.bats
 
@@ -26,6 +29,18 @@ STUB
 	cat >"${STUB_BIN}/systemctl" <<'STUB'
 #!/usr/bin/bash
 printf 'systemctl %s\n' "$*" >> "${CALL_LOG}"
+if [ "$1" = "show" ]; then
+  case "$*" in
+    *"-p ActiveState"*)
+      n="$(grep -c '^systemctl show uupd.service -p ActiveState' "${CALL_LOG}")"
+      read -r -a seq <<< "${ACTIVE_SEQ:-inactive}"
+      idx=$((n - 1))
+      [ "${idx}" -ge "${#seq[@]}" ] && idx=$((${#seq[@]} - 1))
+      echo "${seq[${idx}]}" ;;
+    *"-p Result"*) echo "${RESULT:-success}" ;;
+  esac
+  exit 0
+fi
 if [ "$1 $2" = "start uupd.service" ] && [ -n "${UUPD_FAILS:-}" ]; then
   n="$(grep -c '^systemctl start uupd.service$' "${CALL_LOG}")"
   [ "$n" -le "${UUPD_FAILS}" ] && exit 1
@@ -55,7 +70,8 @@ STUB
 	export PATH="${STUB_BIN}:${PATH}"
 	export CALL_LOG
 	export OMADORA_UPDATE_RETRY_DELAY=0
-	unset STAGED UUPD_FAILS SETUP_FAIL BOOTC_FAIL JQ_FAIL
+	export OMADORA_UPDATE_POLL_INTERVAL=0
+	unset STAGED UUPD_FAILS SETUP_FAIL BOOTC_FAIL JQ_FAIL ACTIVE_SEQ RESULT OMADORA_UPDATE_POLL_LIMIT
 }
 
 @test "omadora-update: the default run updates the system and then the dotfiles" {
@@ -123,24 +139,60 @@ STUB
 	[ "$output" = "0" ]
 }
 
-@test "omadora-update: a failed uupd start is retried and the run then succeeds" {
-	UUPD_FAILS=1 run "${UPDATE_SRC}"
+@test "omadora-update: a failed start followed by systemd's own successful restart counts as success" {
+	UUPD_FAILS=1 ACTIVE_SEQ="activating activating inactive" run "${UPDATE_SRC}"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"retrying in 0 seconds (attempt 1 of 3)"* ]]
+	[[ "$output" == *"uupd is retrying on its own"* ]]
 	run grep -c '^systemctl start uupd.service$' "${CALL_LOG}"
-	[ "$output" = "2" ]
+	[ "$output" = "1" ]
+	run grep -c 'reset-failed' "${CALL_LOG}"
+	[ "$output" = "0" ]
 	run grep -c "^omadora-setup" "${CALL_LOG}"
 	[ "$output" = "1" ]
 }
 
+@test "omadora-update: a failed unit is cleared with reset-failed before it is started again" {
+	UUPD_FAILS=1 ACTIVE_SEQ="failed" run "${UPDATE_SRC}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"starting it again"* ]]
+	mapfile -t calls <"${CALL_LOG}"
+	starts=0
+	reset_before_second=0
+	for c in "${calls[@]}"; do
+		[ "${c}" = "systemctl start uupd.service" ] && starts=$((starts + 1))
+		[ "${c}" = "systemctl reset-failed uupd.service" ] && [ "${starts}" -eq 1 ] && reset_before_second=1
+	done
+	[ "${starts}" -eq 2 ]
+	[ "${reset_before_second}" -eq 1 ]
+}
+
+@test "omadora-update: an inactive unit whose last result was a failure is not success" {
+	UUPD_FAILS=1 ACTIVE_SEQ="inactive" RESULT="exit-code" run "${UPDATE_SRC}"
+	[ "$status" -eq 0 ]
+	run grep -c '^systemctl start uupd.service$' "${CALL_LOG}"
+	[ "$output" = "2" ]
+}
+
 @test "omadora-update: uupd failing three times stops before the dotfiles" {
-	UUPD_FAILS=99 run "${UPDATE_SRC}"
+	UUPD_FAILS=99 ACTIVE_SEQ="failed" run "${UPDATE_SRC}"
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"uupd failed 3 times"* ]]
 	run grep -c '^systemctl start uupd.service$' "${CALL_LOG}"
 	[ "$output" = "3" ]
+	# reset-failed runs between attempts, not after the last one.
+	run grep -c 'reset-failed' "${CALL_LOG}"
+	[ "$output" = "2" ]
 	run grep -c omadora-setup "${CALL_LOG}"
 	[ "$output" = "0" ]
+}
+
+@test "omadora-update: waiting for a unit that never settles is bounded" {
+	UUPD_FAILS=99 ACTIVE_SEQ="activating" OMADORA_UPDATE_POLL_LIMIT=3 run "${UPDATE_SRC}"
+	[ "$status" -eq 1 ]
+	run grep -c 'show uupd.service -p ActiveState' "${CALL_LOG}"
+	# At most 3 checks for each of the 3 attempts.
+	[ "$output" -le 9 ]
+	[ "$output" -ge 3 ]
 }
 
 @test "omadora-update: a failing bootc status is an error, not 'nothing staged'" {

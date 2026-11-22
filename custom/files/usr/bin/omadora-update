@@ -35,11 +35,47 @@ fi
 ((only_dotfiles)) && do_system=0
 
 # uupd refuses to run while the network is busy, which is common right after
-# first boot (Homebrew and Flatpaks download). The unit restarts itself after
-# 60 seconds, but a single start still reports failure, so retry here too.
-# OMADORA_UPDATE_RETRY_DELAY overrides the wait, in seconds.
-retry_delay="${OMADORA_UPDATE_RETRY_DELAY:-60}"
+# first boot (Homebrew and Flatpaks download), and the first start then reports
+# failure. The unit has Restart=on-failure, so systemd starts it again by itself
+# after 60 seconds, and that run can succeed. The unit also allows only 3 starts
+# in 10 minutes, and starting it by hand during systemd's own restarts uses that
+# budget up ("start-limit-hit") even though an update succeeded. So after a failed
+# start, wait for the unit's own restart to settle; only if it ends up failed,
+# clear the failure and start it once more.
+# Overridable for tests: OMADORA_UPDATE_RETRY_DELAY (seconds between manual starts),
+# OMADORA_UPDATE_POLL_INTERVAL (seconds between state checks) and
+# OMADORA_UPDATE_POLL_LIMIT (how many checks to wait, 60 x 5 s by default).
+retry_delay="${OMADORA_UPDATE_RETRY_DELAY:-10}"
+poll_interval="${OMADORA_UPDATE_POLL_INTERVAL:-5}"
+poll_limit="${OMADORA_UPDATE_POLL_LIMIT:-60}"
 attempts=3
+
+# Wait while uupd.service is running or waiting for its automatic restart. Succeeds
+# if the unit settles as inactive with the result "success", fails if it ends up
+# failed (including start-limit-hit) or never settles.
+wait_for_uupd() {
+	local polls=0 state result told=0
+	while ((polls < poll_limit)); do
+		state="$(systemctl show uupd.service -p ActiveState --value 2>/dev/null || true)"
+		case "${state}" in
+			activating | reloading | deactivating)
+				if ((told == 0)); then
+					echo "omadora-update: uupd is retrying on its own; waiting for it" >&2
+					told=1
+				fi
+				;;
+			inactive)
+				result="$(systemctl show uupd.service -p Result --value 2>/dev/null || true)"
+				[[ "${result}" == "success" ]]
+				return
+				;;
+			*) return 1 ;;
+		esac
+		sleep "${poll_interval}"
+		polls=$((polls + 1))
+	done
+	return 1
+}
 
 staged=0
 if ((do_system)); then
@@ -49,11 +85,15 @@ if ((do_system)); then
 		if sudo systemctl start uupd.service; then
 			break
 		fi
+		if wait_for_uupd; then
+			break
+		fi
 		if ((attempt == attempts)); then
 			echo "omadora-update: uupd failed ${attempts} times; see 'journalctl -u uupd.service'" >&2
 			exit 1
 		fi
-		echo "omadora-update: uupd failed, usually because the network is busy; retrying in ${retry_delay} seconds (attempt ${attempt} of ${attempts})" >&2
+		echo "omadora-update: uupd failed, usually because the network is busy; starting it again in ${retry_delay} seconds (attempt $((attempt + 1)) of ${attempts})" >&2
+		sudo systemctl reset-failed uupd.service || true
 		sleep "${retry_delay}"
 	done
 
