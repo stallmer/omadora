@@ -25,6 +25,7 @@
 #    - @ublue-os/brew - Homebrew integration
 #
 # 2. Base Image Options (edit the FROM line below):
+#    - `ghcr.io/ublue-os/base-main` (Fedora plus uBlue hardware support, no desktop)
 #    - `quay.io/fedora-ostree-desktops/silverblue` (Fedora, GNOME desktop)
 #    - `quay.io/fedora-ostree-desktops/base-main` (Fedora, no desktop)
 #    - `quay.io/centos-bootc/centos-bootc:stream10` (CentOS-based)
@@ -48,9 +49,9 @@ COPY custom /custom
 COPY --from=common /system_files /oci/common
 COPY --from=brew /system_files /oci/brew
 
-# Base Image - GNOME included (Fedora official OSTree desktop)
+# Base Image - Fedora Atomic plus uBlue hardware support (akmods, signing, ujust), no desktop
 # Renovate will keep the digest pin up to date.
-FROM quay.io/fedora-ostree-desktops/silverblue:44@sha256:61f96a2b0fdac8a7d36c250ba85524e90cc004fb53aa9e5b21a7513bc971e669
+FROM ghcr.io/ublue-os/base-main:44@sha256:8e6d1d9fd4ad85cf956e1b4d626d499d434de256a7c08fbc9940c5679c142838
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
@@ -104,6 +105,32 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/boot \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/20-packages-and-services.sh
+
+### STEAM
+## Installs Steam and the controller udev rules from the negativo17 repository
+## that base-main enables during the build.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/25-steam.sh
+
+### FONTS
+## Installs the JetBrains Mono Nerd Font from the pinned Nerd Fonts release.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/27-fonts.sh
+
+### DESKTOP
+## Installs the Niri compositor and Noctalia shell and enables SDDM.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/30-desktop.sh
 
 ### CLEANUP
 ## Finalises package and Flatpak sources, then prunes build artifacts before

@@ -1,0 +1,38 @@
+// Omadora keybindings, layered on top of Niri's defaults in /etc/niri/config.kdl.
+// This file is included at the end of that config, so a key defined here
+// overrides the same key there. Niri's navigation, layout and workspace binds
+// stay as they are; this file adds Omarchy-style app and system shortcuts.
+// A key may appear only once in this file (niri rejects duplicates).
+//
+// Mod is the Super key. Apps are launched by desktop-entry id with gtk-launch,
+// so a bind works for an RPM or a Flatpak, and does nothing harmful if the app
+// is not installed yet.
+//
+// Niri's own window switcher already answers Alt+Tab and Mod+Tab (its colors
+// come from the Noctalia theme), so Alt+Tab is not bound here.
+binds {
+    // Launching
+    Mod+Return hotkey-overlay-title="Terminal: alacritty" { spawn "alacritty"; }
+    Mod+Space hotkey-overlay-title="Launcher: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
+    // The Omadora menu is a launcher provider (custom/files/usr/share/omadora/plugins/menu).
+    Mod+Alt+Space hotkey-overlay-title="Omadora menu" { spawn "noctalia" "msg" "panel-toggle" "launcher" "/om "; }
+
+    // Apps
+    Mod+Shift+B hotkey-overlay-title="Browser: Firefox" { spawn "gtk-launch" "org.mozilla.firefox"; }
+    Mod+E hotkey-overlay-title="File manager: Nautilus" { spawn "gtk-launch" "org.gnome.Nautilus"; }
+    Mod+Shift+O hotkey-overlay-title="Obsidian" { spawn "gtk-launch" "md.obsidian.Obsidian"; }
+
+    // Web apps (omadora-launch-webapp opens a site in its own Chromium window).
+    // Mod+Shift+E overrides Niri's stock quit bind; Ctrl+Alt+Delete still quits,
+    // and the session menu on Mod+Shift+Escape logs out.
+    Mod+Shift+E hotkey-overlay-title="Email: Fastmail" { spawn "omadora-launch-webapp" "https://app.fastmail.com/mail/Inbox/"; }
+
+    // Windows. Mod+W closes, as in Omarchy; Niri's tabbed-column toggle moves to Mod+Shift+W.
+    Mod+W repeat=false hotkey-overlay-title="Close window" { close-window; }
+    Mod+Shift+W hotkey-overlay-title="Toggle tabbed column" { toggle-column-tabbed-display; }
+
+    // Utilities
+    Mod+Shift+S hotkey-overlay-title="Screenshot a region" { spawn "noctalia" "msg" "screenshot-region"; }
+    Mod+Ctrl+V hotkey-overlay-title="Clipboard history" { spawn "noctalia" "msg" "panel-toggle" "clipboard"; }
+    Mod+Shift+Escape hotkey-overlay-title="Session menu (lock, logout, power)" { spawn "noctalia" "msg" "panel-toggle" "session"; }
+}

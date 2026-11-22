@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Change the Omadora theme through Noctalia.
+#   omadora-theme-set                show the current theme and mode
+#   omadora-theme-set --list         list the available themes
+#   omadora-theme-set <name>         switch to a bundled theme (case and spacing are ignored)
+#   omadora-theme-set --mode <mode>  set the mode: dark, light or auto
+set -euo pipefail
+
+themes=(Ayu Catppuccin Dracula Eldritch Gruvbox Kanagawa Noctalia Nord "Rosé Pine" Tokyo-Night)
+
+# Lowercase, drop spaces and hyphens, and fold the accent so "rose pine" matches "Rosé Pine".
+normalize() {
+	printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/é/e/g; s/[ -]//g'
+}
+
+usage() {
+	echo "usage: omadora-theme-set [--list | --mode dark|light|auto | <theme>]" >&2
+}
+
+case "${1:-}" in
+	"")
+		noctalia msg color-scheme-get
+		noctalia msg theme-mode-get
+		;;
+	-h | --help)
+		sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
+		;;
+	--list)
+		printf '%s\n' "${themes[@]}"
+		;;
+	--mode)
+		mode="${2:-}"
+		case "${mode}" in
+			dark | light | auto) noctalia msg theme-mode-set "${mode}" ;;
+			*)
+				echo "omadora-theme-set: the mode must be dark, light or auto" >&2
+				exit 2
+				;;
+		esac
+		;;
+	-*)
+		usage
+		exit 2
+		;;
+	*)
+		wanted="$(normalize "$1")"
+		for theme in "${themes[@]}"; do
+			if [[ "$(normalize "${theme}")" == "${wanted}" ]]; then
+				noctalia msg color-scheme-set builtin "${theme}"
+				exit 0
+			fi
+		done
+		echo "omadora-theme-set: unknown theme '$1'. Available themes:" >&2
+		printf '  %s\n' "${themes[@]}" >&2
+		exit 2
+		;;
+esac

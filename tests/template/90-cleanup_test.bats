@@ -53,7 +53,18 @@ printf '%s\n' "$*" >> "${DNF5_LOG}"
 # DNF5_REPO_LIST to simulate dnf's view of enabled repositories; unset means
 # dnf lists none and the guard passes.
 case " $* " in
-  *" repo list "*) [ -n "${DNF5_REPO_FAIL:-}" ] && exit "${DNF5_REPO_FAIL}"; [ -n "${DNF5_REPO_LIST:-}" ] && printf '%s\n' "${DNF5_REPO_LIST}" ;;
+  *" repo list "*)
+    [ -n "${DNF5_REPO_FAIL:-}" ] && exit "${DNF5_REPO_FAIL}"
+    if [ -n "${DNF5_REPO_LIST:-}" ]; then
+      # DNF5_HONOR_DISABLE=1 makes the stub forget repositories that were
+      # disabled through `config-manager setopt <id>.enabled=0`, as dnf does.
+      if [ -n "${DNF5_HONOR_DISABLE:-}" ] && [ -f "${DNF5_LOG}.disabled" ]; then
+        printf '%s\n' "${DNF5_REPO_LIST}" | awk 'NR == FNR { off[$1] = 1; next } !($1 in off)' "${DNF5_LOG}.disabled" -
+      else
+        printf '%s\n' "${DNF5_REPO_LIST}"
+      fi
+    fi ;;
+  *" config-manager setopt "*.enabled=0*) for a in "$@"; do case "$a" in *.enabled=0) printf '%s\n' "${a%.enabled=0}" >> "${DNF5_LOG}.disabled" ;; esac; done ;;
 esac
 exit 0
 EOF
@@ -309,6 +320,18 @@ EOF
 	DNF5_REPO_LIST="fedora-multimedia" run_cleanup
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"still enabled: fedora-multimedia"* ]]
+}
+
+@test "90-cleanup: disables through dnf a repository enabled by an override rather than its .repo file" {
+	# ublue-os/base-main enables fedora-multimedia in /etc/dnf/repos.override.d,
+	# over the enabled=0 in its negativo17-fedora-multimedia.repo. Rewriting the
+	# .repo file cannot undo that, so the script disables the repo through dnf.
+	printf '[fedora-multimedia]\nenabled=0\n' >"${REPOS_DIR}/negativo17-fedora-multimedia.repo"
+	DNF5_HONOR_DISABLE=1 DNF5_REPO_LIST=$'repo id   repo name\nfedora    Fedora 44\nfedora-multimedia    negativo17' run_cleanup
+	[ "$status" -eq 0 ]
+	grep -qx 'config-manager setopt fedora-multimedia.enabled=0' "${DNF5_LOG}"
+	run grep -c 'config-manager setopt fedora ' "${DNF5_LOG}"
+	[ "$output" = "0" ]
 }
 
 @test "90-cleanup: guard catches a repository that ships with no enabled= key" {

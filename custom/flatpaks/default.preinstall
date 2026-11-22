@@ -12,21 +12,94 @@
 # App IDs are listed at https://flathub.org/ and verified by
 # `just validate-flatpaks` before a change can land.
 
-# Email, calendar and newsgroup client. Fedora ships no mail client by default.
-[Flatpak Preinstall org.mozilla.Thunderbird]
+# Browsers and web
+
+# Chromium
+[Flatpak Preinstall org.chromium.Chromium]
 Branch=stable
 
-# Audit and restrict the permissions of installed Flatpaks. There is no RPM
-# equivalent, so this only makes sense as a Flatpak.
+# Firefox
+[Flatpak Preinstall org.mozilla.firefox]
+Branch=stable
+
+# Passwords and notes
+
+# Bitwarden
+[Flatpak Preinstall com.bitwarden.desktop]
+Branch=stable
+
+# KeePassXC
+[Flatpak Preinstall org.keepassxc.KeePassXC]
+Branch=stable
+
+# Obsidian
+[Flatpak Preinstall md.obsidian.Obsidian]
+Branch=stable
+
+# Media and streaming
+
+# mpv
+[Flatpak Preinstall io.mpv.Mpv]
+Branch=stable
+
+# Chatterino
+[Flatpak Preinstall com.chatterino.chatterino]
+Branch=stable
+
+# Moonlight
+[Flatpak Preinstall com.moonlight_stream.Moonlight]
+Branch=stable
+
+# Convey
+[Flatpak Preinstall net.donnybeelo.Convey]
+Branch=stable
+
+# Gaming (Steam itself is installed from an RPM, see build/25-steam.sh)
+
+# Protontricks
+[Flatpak Preinstall com.github.Matoking.protontricks]
+Branch=stable
+
+# ProtonPlus
+[Flatpak Preinstall com.vysp3r.ProtonPlus]
+Branch=stable
+
+# Faugus Launcher
+[Flatpak Preinstall io.github.Faugus.faugus-launcher]
+Branch=stable
+
+# System tools
+
+# Flatseal
 [Flatpak Preinstall com.github.tchx84.Flatseal]
 Branch=stable
 
-# Browse and install GNOME Shell extensions. The packaged gnome-extensions-app
-# can only configure extensions that are already installed.
-[Flatpak Preinstall com.mattjakeman.ExtensionManager]
+# Warehouse
+[Flatpak Preinstall io.github.flattool.Warehouse]
 Branch=stable
 
-# Add another by appending a section, for example:
-#
-# [Flatpak Preinstall io.github.flattool.Warehouse]
-# Branch=stable
+# Gear Lever
+[Flatpak Preinstall it.mijorus.gearlever]
+Branch=stable
+
+# Mission Center
+[Flatpak Preinstall io.missioncenter.MissionCenter]
+Branch=stable
+
+# DistroShelf
+[Flatpak Preinstall com.ranfdev.DistroShelf]
+Branch=stable
+
+# virt-manager
+[Flatpak Preinstall org.virt_manager.virt-manager]
+Branch=stable
+
+# Hardware
+
+# Solaar
+[Flatpak Preinstall io.github.pwr_solaar.solaar]
+Branch=stable
+
+# BudsLink
+[Flatpak Preinstall io.github.maniacx.BudsLink]
+Branch=stable

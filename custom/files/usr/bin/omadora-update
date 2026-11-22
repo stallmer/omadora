@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# Update Omadora: the system image, Flatpaks and Homebrew (through uupd), then
+# the dotfiles.
+#   omadora-update             update everything
+#   omadora-update --system    only the system image, Flatpaks and Homebrew
+#   omadora-update --dotfiles  only the dotfiles
+#   omadora-update --reboot    reboot afterwards if a new system image was staged
+set -euo pipefail
+
+do_system=1
+do_dotfiles=1
+reboot=0
+only_system=0
+only_dotfiles=0
+for arg in "$@"; do
+	case "${arg}" in
+		--system) only_system=1 ;;
+		--dotfiles) only_dotfiles=1 ;;
+		--reboot) reboot=1 ;;
+		-h | --help)
+			sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
+			exit 0
+			;;
+		*)
+			echo "usage: omadora-update [--system|--dotfiles] [--reboot]" >&2
+			exit 2
+			;;
+	esac
+done
+if ((only_system && only_dotfiles)); then
+	echo "omadora-update: --system and --dotfiles cannot be combined; run it with no option for both" >&2
+	exit 2
+fi
+((only_system)) && do_dotfiles=0
+((only_dotfiles)) && do_system=0
+
+# uupd refuses to run while the network is busy, which is common right after
+# first boot (Homebrew and Flatpaks download), and the first start then reports
+# failure. The unit has Restart=on-failure, so systemd starts it again by itself
+# after 60 seconds, and that run can succeed. The unit also allows only 3 starts
+# in 10 minutes, and starting it by hand during systemd's own restarts uses that
+# budget up ("start-limit-hit") even though an update succeeded. So after a failed
+# start, wait for the unit's own restart to settle; only if it ends up failed,
+# clear the failure and start it once more.
+# Overridable for tests: OMADORA_UPDATE_RETRY_DELAY (seconds between manual starts),
+# OMADORA_UPDATE_POLL_INTERVAL (seconds between state checks) and
+# OMADORA_UPDATE_POLL_LIMIT (how many checks to wait, 60 x 5 s by default).
+retry_delay="${OMADORA_UPDATE_RETRY_DELAY:-10}"
+poll_interval="${OMADORA_UPDATE_POLL_INTERVAL:-5}"
+poll_limit="${OMADORA_UPDATE_POLL_LIMIT:-60}"
+attempts=3
+
+# Wait while uupd.service is running or waiting for its automatic restart. Succeeds
+# if the unit settles as inactive with the result "success", fails if it ends up
+# failed (including start-limit-hit) or never settles.
+wait_for_uupd() {
+	local polls=0 state result told=0
+	while ((polls < poll_limit)); do
+		state="$(systemctl show uupd.service -p ActiveState --value 2>/dev/null || true)"
+		case "${state}" in
+			activating | reloading | deactivating)
+				if ((told == 0)); then
+					echo "omadora-update: uupd is retrying on its own; waiting for it" >&2
+					told=1
+				fi
+				;;
+			inactive)
+				result="$(systemctl show uupd.service -p Result --value 2>/dev/null || true)"
+				[[ "${result}" == "success" ]]
+				return
+				;;
+			*) return 1 ;;
+		esac
+		sleep "${poll_interval}"
+		polls=$((polls + 1))
+	done
+	return 1
+}
+
+staged=0
+if ((do_system)); then
+	echo "==> Updating the system image, Flatpaks and Homebrew"
+	for ((attempt = 1; attempt <= attempts; attempt++)); do
+		# The same service the update timer runs; it carries the SELinux context bootc needs.
+		if sudo systemctl start uupd.service; then
+			break
+		fi
+		if wait_for_uupd; then
+			break
+		fi
+		if ((attempt == attempts)); then
+			echo "omadora-update: uupd failed ${attempts} times; see 'journalctl -u uupd.service'" >&2
+			exit 1
+		fi
+		echo "omadora-update: uupd failed, usually because the network is busy; starting it again in ${retry_delay} seconds (attempt $((attempt + 1)) of ${attempts})" >&2
+		sudo systemctl reset-failed uupd.service || true
+		sleep "${retry_delay}"
+	done
+
+	if ! boot_status_raw="$(sudo bootc status --json)"; then
+		echo "omadora-update: 'bootc status' failed, so I cannot tell whether a new system image is staged" >&2
+		exit 1
+	fi
+	# On a machine installed from the ISO, bootc's mount call prints a hint on stdout
+	# ("mount: (hint) your fstab has been modified, but systemd still uses the old
+	# version ...") ahead of the JSON. Keep only the JSON, from its first line.
+	boot_status="$(printf '%s\n' "${boot_status_raw}" | sed -n '/^[[:space:]]*{/,$p')"
+	jq_status=0
+	jq -e '.status.staged != null' <<<"${boot_status}" >/dev/null || jq_status=$?
+	case "${jq_status}" in
+		0) staged=1 ;;
+		1) ;;
+		*)
+			echo "omadora-update: could not read the output of 'bootc status'" >&2
+			exit 1
+			;;
+	esac
+fi
+
+if ((do_dotfiles)); then
+	echo "==> Updating the dotfiles"
+	omadora-setup || {
+		echo "omadora-update: the dotfiles update failed; 'omadora-setup --force' overwrites local changes" >&2
+		exit 1
+	}
+fi
+
+if ((staged)); then
+	if ((reboot)); then
+		echo "==> Rebooting into the new system image"
+		sudo systemctl reboot
+	else
+		echo "==> A new system image is staged. Reboot to run it."
+	fi
+else
+	echo "==> Up to date"
+fi

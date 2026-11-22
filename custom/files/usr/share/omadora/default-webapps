@@ -1,0 +1,4 @@
+# Web apps added to the launcher at first login, one per line: name|url
+# (see custom/files/usr/share/ublue-os/user-setup.hooks.d/40-omadora-webapps.sh).
+# Remove one later with omadora-webapp-remove <name>.
+Fastmail|https://app.fastmail.com/mail/Inbox/

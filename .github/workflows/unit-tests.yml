@@ -67,6 +67,21 @@ jobs:
             -o Acquire::https::Timeout=30 \
             -o Acquire::Retries=2 \
             bats
+      - name: Install luau
+        # The menu plugin's logic tests (tests/luau) run under the standalone
+        # Luau interpreter.
+        env:
+          # renovate: datasource=github-releases depName=luau-lang/luau
+          LUAU_VERSION: "0.744"
+          # sha256 of luau-ubuntu.zip for that release; update it with the version.
+          LUAU_SHA256: "6506f0852c623aaffcb28494aac16c26dc04a269ea0e16cc0aafc8c8ac79f3ec"
+        run: |
+          set -euo pipefail
+          base="https://github.com/luau-lang/luau/releases/download/${LUAU_VERSION}"
+          curl -sSfL --retry 5 --retry-delay 3 --retry-all-errors -o luau-ubuntu.zip "${base}/luau-ubuntu.zip"
+          echo "${LUAU_SHA256}  luau-ubuntu.zip" | sha256sum -c -
+          unzip -q luau-ubuntu.zip -d /tmp/luau
+          sudo install -m 0755 /tmp/luau/luau /usr/local/bin/luau
       - name: Run unit tests
         # `just test-unit` is the single definition of how the suite runs.
         run: just test-unit
