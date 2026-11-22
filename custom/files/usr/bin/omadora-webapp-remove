@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Remove a web app added with omadora-webapp-install.
+#   omadora-webapp-remove <name>
+# It only removes entries that omadora-webapp-install created.
+set -euo pipefail
+
+name="${1:-}"
+if [[ -z "${name}" ]]; then
+	echo "usage: omadora-webapp-remove <name>" >&2
+	exit 2
+fi
+
+slug="$(printf '%s' "${name}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+data_home="${XDG_DATA_HOME:-${HOME}/.local/share}"
+desktop_file="${data_home}/applications/omadora-webapp-${slug}.desktop"
+
+if [[ -z "${slug}" || ! -f "${desktop_file}" ]]; then
+	echo "omadora-webapp-remove: no web app named '${name}'" >&2
+	exit 1
+fi
+if ! grep -qx 'X-Omadora-Webapp=true' "${desktop_file}"; then
+	echo "omadora-webapp-remove: ${desktop_file} was not created by omadora-webapp-install, leaving it alone" >&2
+	exit 1
+fi
+
+rm -f -- "${desktop_file}" "${data_home}/omadora/webapps/icons/${slug}".*
+if command -v update-desktop-database >/dev/null 2>&1; then
+	update-desktop-database "${data_home}/applications" >/dev/null 2>&1 || true
+fi
+echo "Removed ${name}"

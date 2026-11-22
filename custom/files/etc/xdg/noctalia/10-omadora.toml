@@ -1,0 +1,56 @@
+# Omadora system defaults for Noctalia. A user's ~/.config/noctalia overrides these.
+# Timeouts are seconds of idle time: lock at 10 minutes, screen off at 11, suspend at 15.
+
+[idle]
+behavior_order = ["lock", "screen-off", "suspend"]
+
+[idle.behavior.lock]
+timeout = 600
+action = "lock"
+enabled = true
+
+[idle.behavior.screen-off]
+timeout = 660
+action = "screen_off"
+enabled = true
+
+[idle.behavior.suspend]
+timeout = 900
+action = "lock_and_suspend"
+enabled = true
+
+# Theme. Noctalia re-renders the enabled templates into the apps' config
+# whenever the palette changes. Switch with `omadora-theme-set`.
+[theme]
+mode = "dark"
+source = "builtin"
+builtin = "Tokyo-Night"
+
+[theme.templates]
+enable_builtin_templates = true
+builtin_ids = ["alacritty", "niri", "gtk3", "gtk4"]
+
+# The Omadora menu: a launcher provider, opened with Super+Alt+Space or by
+# typing /om in the launcher. The plugin ships in the image as a read-only path
+# source. Setting [[plugins.source]] replaces Noctalia's default list instead of
+# adding to it, so its two default git sources are repeated here.
+[plugins]
+enabled = ["omadora/menu"]
+
+[[plugins.source]]
+name = "omadora"
+kind = "path"
+location = "/usr/share/omadora/plugins"
+enabled = true
+
+[[plugins.source]]
+name = "official"
+kind = "git"
+location = "https://github.com/noctalia-dev/official-plugins"
+enabled = true
+
+[[plugins.source]]
+name = "community"
+kind = "git"
+location = "https://github.com/noctalia-dev/community-plugins"
+enabled = true

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Apply Omadora's default user dotfiles with chezmoi.
+#   omadora-setup           first run: clone and apply; later runs: pull and apply
+#   omadora-setup --force   pull and apply, overwriting local changes
+# The repository can be overridden with OMADORA_DOTFILES_REPO.
+set -euo pipefail
+
+REPO="${OMADORA_DOTFILES_REPO:-https://github.com/stallmer/omadora-dotfiles.git}"
+SOURCE="${XDG_DATA_HOME:-${HOME}/.local/share}/chezmoi"
+
+force=()
+case "${1:-}" in
+	"") ;;
+	--force) force=(--force) ;;
+	-h | --help)
+		sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'
+		exit 0
+		;;
+	*)
+		echo "usage: omadora-setup [--force]" >&2
+		exit 2
+		;;
+esac
+
+if [[ ! -d "${SOURCE}/.git" ]]; then
+	chezmoi init --apply "${force[@]}" "${REPO}"
+else
+	chezmoi update "${force[@]}"
+fi

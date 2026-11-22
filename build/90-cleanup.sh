@@ -74,26 +74,42 @@ for repo_file in "${third_party_repo_files[@]}"; do
 	disable_repo_file "${repo_file}"
 done
 
-# Fail loudly rather than shipping a third-party repository that is still live.
 # Ask dnf which repositories are actually enabled, rather than pattern-matching
 # the .repo files: a repository that ships with no enabled= key is enabled by
 # dnf's default and slips past both the rewrite above and a grep of the file.
+# A repository can also be enabled outside its .repo file, through a dnf
+# override in /etc/dnf/repos.override.d (ublue-os/base-main enables
+# fedora-multimedia that way, with a priority, over the enabled=0 in its
+# negativo17-fedora-multimedia.repo). Rewriting the .repo file cannot undo that.
+#
 # The allowlist is Fedora's own repository ids, including the updates-archive
 # repositories shipped by fedora-repos-archive: those are first-party and stay
-# enabled (the ownership pass does not disable rpm-owned files), while anything
-# else dnf reports as live - including Fedora-like names such as fedora-multimedia
-# that leaked through the disable pass - fails the build.
-if ! repo_list="$(dnf5 -q repo list --enabled)"; then
-	echo "::error::could not query enabled repositories with dnf5" >&2
-	exit 1
+# enabled (the ownership pass does not disable rpm-owned files). Anything else
+# dnf reports as live is disabled through dnf itself, which rewrites the
+# override, and then checked again. A repository that is still live after that
+# fails the build.
+list_live_repos() {
+	local repo_list
+	if ! repo_list="$(dnf5 -q repo list --enabled)"; then
+		echo "::error::could not query enabled repositories with dnf5" >&2
+		exit 1
+	fi
+	printf '%s\n' "${repo_list}" | awk '
+		BEGIN { split("fedora updates fedora-updates fedora-cisco-openh264 fedora-updates-archive updates-archive", ok, " "); for (i in ok) allowed[ok[i]] = 1 }
+		NF == 0 { next }
+		$1 == "repo" && $2 == "id" { next }
+		$1 == "Id" || $1 == "Id:" { next }
+		!($1 in allowed) { print $1 }
+	'
+}
+
+live="$(list_live_repos)"
+if [ -n "${live}" ]; then
+	while IFS= read -r repo_id; do
+		dnf5 config-manager setopt "${repo_id}.enabled=0"
+	done <<<"${live}"
+	live="$(list_live_repos)"
 fi
-live="$(printf '%s\n' "${repo_list}" | awk '
-	BEGIN { split("fedora updates fedora-updates fedora-cisco-openh264 fedora-updates-archive updates-archive", ok, " "); for (i in ok) allowed[ok[i]] = 1 }
-	NF == 0 { next }
-	$1 == "repo" && $2 == "id" { next }
-	$1 == "Id" || $1 == "Id:" { next }
-	!($1 in allowed) { print $1 }
-')"
 if [ -n "${live}" ]; then
 	echo "::error::third-party repository still enabled: ${live}" >&2
 	exit 1

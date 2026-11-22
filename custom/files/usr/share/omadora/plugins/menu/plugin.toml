@@ -1,0 +1,22 @@
+# The Omadora menu: a nested menu in Noctalia's launcher, opened with Super+Alt+Space
+# (or by typing /om in the launcher).
+
+id = "omadora/menu"
+name = "Omadora menu"
+version = "0.1.0"
+# 24 is the oldest level that has the argument-array form of noctalia.runAsync;
+# 22 added require("./file.luau"). Noctalia 5.4.1 supports up to level 34.
+plugin_api = 24
+author = "omadora"
+license = "MIT"
+dependencies = []
+tags = ["launcher", "system"]
+icon = "menu-2"
+description = "Style, setup, install, update and system actions from the Noctalia launcher."
+
+[[launcher_provider]]
+id = "menu"
+entry = "menu.luau"
+prefix = "om"
+glyph = "menu-2"
+include_in_global_search = false

@@ -12,29 +12,87 @@ It is built to be driven by hand or by an agent.
 
 ## What Makes this Raptor Different?
 
-Here are the changes from [Base Image Name]. This image is based on
-[Bluefin/Bazzite/Aurora/etc] and includes these customizations:
+Here are the changes from [`ublue-os/base-main`](https://github.com/ublue-os/base-main).
+This image is based on `base-main:44` (Fedora 44 Atomic with Universal Blue
+hardware support and no desktop) and includes these customizations:
 
 ### Added Packages (Build-time)
 
-- List the packages you install at build time
+- **Desktop**: `niri` (scrolling-tiling Wayland compositor), `noctalia` (the
+  shell: bar, launcher, notifications, lock screen, wallpaper, idle and night
+  light), `sddm` with the Wayland greeter (`sddm-wayland-generic`)
+- **Portals and keyring**: `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`,
+  `gnome-keyring`
+- **Other**: `xwayland-satellite` (X11 apps), `power-profiles-daemon`,
+  `alacritty` (terminal), `chezmoi` (dotfiles)
+- **Everyday apps**: `nautilus` (file manager), `imv` (image viewer),
+  `system-config-printer` (printer setup)
+- **Fonts**: JetBrains Mono Nerd Font (from the Nerd Fonts release, pinned by
+  checksum; Fedora has no Nerd Font package)
+- **Gaming**: `steam` and `steam-devices`, installed from the negativo17
+  repository that `base-main` enables during the build (the repository is
+  disabled again before the image ships)
+- **From the template**: `just`, `gum`, `fzf`, `jq`, and `uupd` (from the
+  `ublue-os/packages` COPR)
 
 ### Added Applications (Runtime)
 
-- **CLI tools (Homebrew)**: list them
-- **GUI apps (Flatpak)**: list them
+- **CLI tools (Homebrew)**, installed on request with `ujust install-default-apps`
+  and `ujust install-dev-tools`:
+  - Default: `atuin`, `bash-preexec`, `bat`, `bbrew`, `direnv`, `dysk`, `eza`,
+    `fd`, `herdr`, `neovim`, `ripgrep`, `starship`, `syncthing`, `tealdeer`,
+    `television`, `trash-cli`, `ugrep`, `yq`, `zoxide`
+  - Development: `bats-core`, `gh`, `git-filter-repo`, `glab`, `shellcheck`,
+    `stress-ng`
+- **GUI apps (Flatpak)**, installed on first boot: Chromium, Firefox, Bitwarden,
+  KeePassXC, Obsidian, mpv, Chatterino, Moonlight, Convey, Protontricks,
+  ProtonPlus, Faugus Launcher, Flatseal, Warehouse, Gear Lever, Mission Center,
+  DistroShelf, virt-manager, Solaar and BudsLink
 
 ### Removed or Disabled
 
-- List anything removed from the base image
+- No GNOME or other desktop: `base-main` ships none
+- Third-party repositories, such as `fedora-multimedia` that `base-main`
+  enables, are disabled at the end of the build
+- Waybar, `swayidle` and `gammastep` are not used: Noctalia covers the bar,
+  idle and night light
 
 ### Configuration Changes
 
-- Systemd services enabled or disabled
-- Desktop environment changes
-- Other notable modifications
+- `sddm` is enabled and starts the `niri` session
+- `/etc/niri/config.kdl` starts Noctalia and points the launcher, lock, volume,
+  microphone, media and brightness keys at `noctalia msg` commands
+- Web apps open in their own Chromium window: `omadora-webapp-install <name> <url>`
+  adds one to the launcher, `omadora-webapp-remove <name>` removes it, and the list
+  in `/usr/share/omadora/default-webapps` (Fastmail, on `Super+Shift+E`) is added
+  at first login
+- The Omadora menu (`Super+Alt+Space`, or `/om` in the launcher) is a Noctalia
+  launcher plugin shipped in `/usr/share/omadora/plugins/menu`: Style (theme, mode,
+  wallpaper), Setup, Install, Update and System, with sub-menus
+- `/etc/niri/omadora-binds.kdl`, included at the end of that config, adds
+  Omarchy-style shortcuts on top of Niri's stock binds: `Super+Return` terminal,
+  `Super+Space` launcher, `Super+Shift+B` browser (Firefox), `Super+E` file manager,
+  `Super+Shift+O` Obsidian, `Super+W` close window (the tabbed-column toggle moves
+  to `Super+Shift+W`), `Super+Shift+S` region screenshot, `Super+Ctrl+V` clipboard
+  history and `Super+Shift+Escape` session menu; `Super+Shift+/` lists them all
+- `/etc/xdg/noctalia/10-omadora.toml` sets idle: lock after 10 minutes, screen
+  off after 11, suspend after 15
+  (Noctalia 5.6.0 or later reads this file on its own; Fedora 44 ships 5.4.1, so
+  the dotfiles load it with an include in `~/.config/noctalia/omadora.toml`)
+- On first login, `omadora-setup` applies the public
+  [`omadora-dotfiles`](https://github.com/stallmer/omadora-dotfiles) with
+  chezmoi (rerun it by hand to re-apply)
+- `omadora-update` updates the system image, Flatpaks and Homebrew (through
+  `uupd`) and the dotfiles in one command
+- A drop-in for `systemd-remount-fs.service` skips it when `/` is a read-only
+  composefs overlay, so a machine installed from the ISO does not report a failed
+  unit
+- Theming comes from Noctalia: the default palette is Tokyo-Night in dark mode,
+  and Noctalia re-renders the Alacritty, Niri and GTK themes whenever the palette
+  changes. `omadora-theme-set` switches among Noctalia's ten bundled palettes
+  (`--list` shows them) and sets the mode
 
-_Last updated: [date]_
+_Last updated: November 21, 2026_
 
 > This section is what tells your users how your image differs from its base.
 > Update it whenever you add or remove a package, app, or service.

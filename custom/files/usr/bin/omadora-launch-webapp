@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Open a website in its own window, using Chromium's app mode. If a window for that
+# site is already open, focus it instead of opening a second one.
+#   omadora-launch-webapp <url>
+set -euo pipefail
+
+url="${1:-}"
+case "${url}" in
+	http://* | https://*) ;;
+	*)
+		echo "usage: omadora-launch-webapp <http(s) url>" >&2
+		exit 2
+		;;
+esac
+
+# Chromium names an app window "chrome-<host>_<path with / as _>-Default" (for
+# https://app.fastmail.com/mail/Inbox/ that is
+# chrome-app.fastmail.com__mail_Inbox_-Default). Any query or fragment is ignored.
+app_id_for() {
+	local stripped="${1%%[?#]*}" rest host path
+	rest="${stripped#*://}"
+	host="${rest%%/*}"
+	if [[ "${rest}" == */* ]]; then
+		path="/${rest#*/}"
+	else
+		path="/"
+	fi
+	printf 'chrome-%s_%s-Default' "${host}" "${path//\//_}"
+}
+
+# Focus an existing window through niri's IPC. Without niri, jq or a match, fall
+# through and launch.
+if command -v niri >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+	window_id="$(niri msg --json windows 2>/dev/null | jq -r --arg app "$(app_id_for "${url}")" \
+		'[.[] | select(.app_id == $app)][0].id // empty' 2>/dev/null || true)"
+	if [[ -n "${window_id}" ]]; then
+		exec niri msg action focus-window --id "${window_id}"
+	fi
+fi
+
+if ! flatpak info org.chromium.Chromium >/dev/null 2>&1; then
+	echo "omadora-launch-webapp: the Chromium Flatpak (org.chromium.Chromium) is not installed yet." >&2
+	echo "First boot installs it; or run: flatpak install flathub org.chromium.Chromium" >&2
+	exit 1
+fi
+
+exec flatpak run org.chromium.Chromium --app="${url}"
