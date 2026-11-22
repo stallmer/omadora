@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Open a website in its own window, using Chromium's app mode.
+#   omadora-launch-webapp <url>
+set -euo pipefail
+
+url="${1:-}"
+case "${url}" in
+	http://* | https://*) ;;
+	*)
+		echo "usage: omadora-launch-webapp <http(s) url>" >&2
+		exit 2
+		;;
+esac
+
+if ! flatpak info org.chromium.Chromium >/dev/null 2>&1; then
+	echo "omadora-launch-webapp: the Chromium Flatpak (org.chromium.Chromium) is not installed yet." >&2
+	echo "First boot installs it; or run: flatpak install flathub org.chromium.Chromium" >&2
+	exit 1
+fi
+
+exec flatpak run org.chromium.Chromium --app="${url}"

@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Add a web app to the launcher: a site that opens in its own Chromium window.
+#   omadora-webapp-install <name> <url> [icon-file-or-url]
+# Without an icon it tries the site's own apple-touch-icon.png, then falls back to a
+# generic icon. Running it again for the same name updates the entry.
+set -euo pipefail
+
+usage() {
+	echo "usage: omadora-webapp-install <name> <http(s) url> [icon png/svg file or url]" >&2
+	exit 2
+}
+
+fail() {
+	echo "omadora-webapp-install: $1" >&2
+	exit 2
+}
+
+name="${1:-}"
+url="${2:-}"
+icon_arg="${3:-}"
+[[ -n "${name}" && -n "${url}" ]] || usage
+
+case "${name}" in
+	*$'\n'* | *$'\r'*) fail "the name must be one line" ;;
+esac
+case "${url}" in
+	http://* | https://*) ;;
+	*) fail "the URL must start with http:// or https://" ;;
+esac
+case "${url}" in
+	*[[:space:]\"\'\\\`\$]*) fail "the URL contains a space, quote, backslash, backtick or dollar sign" ;;
+esac
+
+slug="$(printf '%s' "${name}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
+[[ -n "${slug}" ]] || fail "the name needs at least one letter or digit"
+
+data_home="${XDG_DATA_HOME:-${HOME}/.local/share}"
+apps_dir="${data_home}/applications"
+icon_dir="${data_home}/omadora/webapps/icons"
+desktop_file="${apps_dir}/omadora-webapp-${slug}.desktop"
+mkdir -p "${apps_dir}" "${icon_dir}"
+
+is_png() {
+	[[ "$(head -c 8 "$1" 2>/dev/null | od -An -tx1 | tr -d ' \n')" == "89504e470d0a1a0a" ]]
+}
+
+icon="web-browser"
+workdir="$(mktemp -d)"
+trap 'rm -rf "${workdir}"' EXIT
+
+if [[ -n "${icon_arg}" ]]; then
+	# An icon the caller chose: a png, svg or xpm file or URL.
+	ext="${icon_arg##*.}"
+	case "${ext}" in
+		png | svg | xpm) ;;
+		*) fail "the icon must be a png, svg or xpm file" ;;
+	esac
+	case "${icon_arg}" in
+		http://* | https://*) curl -fsSL --max-time 15 -o "${workdir}/icon.${ext}" "${icon_arg}" || fail "could not download the icon" ;;
+		*) cp -- "${icon_arg}" "${workdir}/icon.${ext}" || fail "could not read the icon file" ;;
+	esac
+	rm -f "${icon_dir}/${slug}".*
+	install -m 0644 "${workdir}/icon.${ext}" "${icon_dir}/${slug}.${ext}"
+	icon="${icon_dir}/${slug}.${ext}"
+else
+	origin="$(printf '%s' "${url}" | sed -E 's|^(https?://[^/]+).*|\1|')"
+	if curl -fsSL --max-time 10 -o "${workdir}/auto.png" "${origin}/apple-touch-icon.png" 2>/dev/null && is_png "${workdir}/auto.png"; then
+		rm -f "${icon_dir}/${slug}".*
+		install -m 0644 "${workdir}/auto.png" "${icon_dir}/${slug}.png"
+		icon="${icon_dir}/${slug}.png"
+	fi
+fi
+
+# A literal % in an Exec line must be doubled.
+exec_url="${url//%/%%}"
+
+cat >"${desktop_file}" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=${name}
+Exec=omadora-launch-webapp "${exec_url}"
+Icon=${icon}
+Terminal=false
+Categories=Network;
+StartupNotify=true
+X-Omadora-Webapp=true
+DESKTOP
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+	update-desktop-database "${apps_dir}" >/dev/null 2>&1 || true
+fi
+echo "Added ${name}: ${desktop_file}"

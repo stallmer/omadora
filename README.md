@@ -62,6 +62,10 @@ hardware support and no desktop) and includes these customizations:
 - `sddm` is enabled and starts the `niri` session
 - `/etc/niri/config.kdl` starts Noctalia and points the launcher, lock, volume,
   microphone, media and brightness keys at `noctalia msg` commands
+- Web apps open in their own Chromium window: `omadora-webapp-install <name> <url>`
+  adds one to the launcher, `omadora-webapp-remove <name>` removes it, and the list
+  in `/usr/share/omadora/default-webapps` (Fastmail, on `Super+Shift+E`) is added
+  at first login
 - The Omadora menu (`Super+Alt+Space`, or `/om` in the launcher) is a Noctalia
   launcher plugin shipped in `/usr/share/omadora/plugins/menu`: Style (theme, mode,
   wallpaper), Setup, Install, Update and System, with sub-menus

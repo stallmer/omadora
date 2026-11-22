@@ -22,6 +22,11 @@ binds {
     Mod+E hotkey-overlay-title="File manager: Nautilus" { spawn "gtk-launch" "org.gnome.Nautilus"; }
     Mod+Shift+O hotkey-overlay-title="Obsidian" { spawn "gtk-launch" "md.obsidian.Obsidian"; }
 
+    // Web apps (omadora-launch-webapp opens a site in its own Chromium window).
+    // Mod+Shift+E overrides Niri's stock quit bind; Ctrl+Alt+Delete still quits,
+    // and the session menu on Mod+Shift+Escape logs out.
+    Mod+Shift+E hotkey-overlay-title="Email: Fastmail" { spawn "omadora-launch-webapp" "https://app.fastmail.com/mail/Inbox/"; }
+
     // Windows. Mod+W closes, as in Omarchy; Niri's tabbed-column toggle moves to Mod+Shift+W.
     Mod+W repeat=false hotkey-overlay-title="Close window" { close-window; }
     Mod+Shift+W hotkey-overlay-title="Toggle tabbed column" { toggle-column-tabbed-display; }
