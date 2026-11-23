@@ -24,7 +24,7 @@ hardware support and no desktop) and includes these customizations:
 - **Portals and keyring**: `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`,
   `gnome-keyring`
 - **Other**: `xwayland-satellite` (X11 apps), `power-profiles-daemon`,
-  `alacritty` (terminal), `chezmoi` (dotfiles)
+  `alacritty` (terminal), `chezmoi` (for your own dotfiles)
 - **Everyday apps**: `nautilus` (file manager), `imv` (image viewer),
   `system-config-printer` (printer setup)
 - **Fonts**: JetBrains Mono Nerd Font (from the Nerd Fonts release, pinned by
@@ -78,12 +78,20 @@ hardware support and no desktop) and includes these customizations:
 - `/etc/xdg/noctalia/10-omadora.toml` sets idle: lock after 10 minutes, screen
   off after 11, suspend after 15
   (Noctalia 5.6.0 or later reads this file on its own; Fedora 44 ships 5.4.1, so
-  the dotfiles load it with an include in `~/.config/noctalia/omadora.toml`)
-- On first login, `omadora-setup` applies the public
-  [`omadora-dotfiles`](https://github.com/stallmer/omadora-dotfiles) with
-  chezmoi (rerun it by hand to re-apply)
+  the first-login step copies an include into `~/.config/noctalia/omadora.toml`)
+- Everything works out of the box, with no network and no dotfiles repository:
+  Niri's, Alacritty's and Noctalia's defaults live in `/etc`, and on first login
+  `omadora-setup --skel` copies the few files that must live in `$HOME` (theme
+  placeholders and the Noctalia include) from `/usr/share/omadora/skel`, never
+  overwriting an existing file
+- Your own settings are yours: to keep your configuration in a git repository,
+  run `omadora-setup <repo-url>` (any URL git accepts; it uses chezmoi, so the
+  repository is a chezmoi source). `omadora-setup --update` pulls and applies it
+  again. To change Niri or Alacritty without a repository, copy the examples in
+  `/usr/share/omadora/examples/` to `~/.config`; they keep Omadora's defaults
+  with an include or an import
 - `omadora-update` updates the system image, Flatpaks and Homebrew (through
-  `uupd`) and the dotfiles in one command
+  `uupd`) and your dotfiles repository, if you set one, in one command
 - A drop-in for `systemd-remount-fs.service` skips it when `/` is a read-only
   composefs overlay, so a machine installed from the ISO does not report a failed
   unit

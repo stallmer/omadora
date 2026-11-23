@@ -81,7 +81,7 @@ M.root = {
         { key = "dev", title = "Development tools", subtitle = "Homebrew: bats, gh, shellcheck and more", glyph = "code",
           action = terminal("ujust install-dev-tools") },
       } },
-    { key = "update", title = "Update", subtitle = "Update the system, Flatpaks, Homebrew and dotfiles", glyph = "refresh",
+    { key = "update", title = "Update", subtitle = "Update the system, Flatpaks, Homebrew and your dotfiles", glyph = "refresh",
       action = terminal("omadora-update") },
     { key = "system", title = "System", subtitle = "Lock, suspend and power", glyph = "power",
       children = {

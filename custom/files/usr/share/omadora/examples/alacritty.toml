@@ -1,0 +1,9 @@
+# Copy this to ~/.config/alacritty/alacritty.toml to customize Alacritty. Alacritty
+# reads that file instead of /etc/alacritty/alacritty.toml, so keep the import
+# below to keep Omadora's defaults. Your settings go below it and win.
+[general]
+import = ["/etc/alacritty/alacritty.toml"]
+
+# Example:
+# [font]
+# size = 13.0

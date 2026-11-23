@@ -23,7 +23,7 @@ set -euo pipefail
 #
 #   power-profiles-daemon       optional Noctalia power-profile switching
 #   alacritty                   terminal (ghostty is not in the repositories)
-#   chezmoi                     applies the Omadora dotfiles on first login
+#   chezmoi                     applies the user's own dotfiles repository (omadora-setup <repo>)
 #   nautilus                    file manager
 #   imv                         image viewer
 #   system-config-printer       printer setup (cups is already in the image)
@@ -95,16 +95,25 @@ rebind '{ spawn-sh "playerctl next"; }' '{ spawn "noctalia" "msg" "media" "next"
 rebind '{ spawn "brightnessctl" "--class=backlight" "set" "+10%"; }' '{ spawn "noctalia" "msg" "brightness-up"; }'
 rebind '{ spawn "brightnessctl" "--class=backlight" "set" "10%-"; }' '{ spawn "noctalia" "msg" "brightness-down"; }'
 
-# Omadora's own keybindings (custom/files/etc/niri/omadora-binds.kdl) are included
-# last, so they can override stock binds. The relative path resolves against
-# /etc/niri.
-if ! grep -qx 'include "omadora-binds.kdl"' /etc/niri/config.kdl; then
-	printf '\ninclude "omadora-binds.kdl"\n' >>/etc/niri/config.kdl
-fi
+# Omadora's own keybindings (custom/files/etc/niri/omadora-binds.kdl) and look
+# (omadora-look.kdl) are included last, so they can override stock settings. The
+# relative paths resolve against /etc/niri. The last include pulls in the colors
+# Noctalia renders for the active theme; the first-login hook seeds an empty
+# placeholder for it (custom/files/usr/share/omadora/skel), so the file exists
+# for every user without a ~/.config/niri/config.kdl of their own.
+for inc in 'include "omadora-binds.kdl"' 'include "omadora-look.kdl"' 'include "~/.config/niri/noctalia.kdl"'; do
+	if ! grep -qxF "${inc}" /etc/niri/config.kdl; then
+		printf '\n%s\n' "${inc}" >>/etc/niri/config.kdl
+	fi
+done
 
 # Fail the build on a config niri rejects, such as a duplicate key in a binds
-# block or a missing include.
-niri validate -c /etc/niri/config.kdl
+# block or a missing include. The Noctalia include needs its placeholder, so
+# validate against a throwaway home directory that has the seeded files.
+validate_home="$(mktemp -d)"
+cp -rT /usr/share/omadora/skel "${validate_home}"
+HOME="${validate_home}" niri validate -c /etc/niri/config.kdl
+rm -rf "${validate_home}"
 
 echo "::endgroup::"
 

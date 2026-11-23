@@ -44,3 +44,27 @@ bind_keys() {
 	grep -qF 'include "omadora-binds.kdl"' "${DESKTOP}"
 	grep -qF 'niri validate -c /etc/niri/config.kdl' "${DESKTOP}"
 }
+
+@test "niri-look: the look file exists and the desktop script includes it" {
+	[ -f "${SCRIPT_DIR}/../../custom/files/etc/niri/omadora-look.kdl" ]
+	grep -qF 'include "omadora-look.kdl"' "${DESKTOP}"
+}
+
+@test "niri-look: the desktop script includes Noctalia's colors last and seeds a placeholder for them" {
+	grep -qF 'include "~/.config/niri/noctalia.kdl"' "${DESKTOP}"
+	[ -f "${SCRIPT_DIR}/../../custom/files/usr/share/omadora/skel/.config/niri/noctalia.kdl" ]
+}
+
+@test "niri-look: the config validates against a home that holds the seeded files" {
+	command -v niri >/dev/null || skip "niri is not installed"
+	dir="${BATS_TEST_TMPDIR:-${BATS_TMPDIR}}/niri-validate.$$"
+	mkdir -p "${dir}/etc" "${dir}/home"
+	cp /usr/share/doc/niri/default-config.kdl "${dir}/etc/config.kdl"
+	cp "${BINDS}" "${dir}/etc/"
+	cp "${SCRIPT_DIR}/../../custom/files/etc/niri/omadora-look.kdl" "${dir}/etc/"
+	sed -i 's|^spawn-at-startup "waybar"$|spawn-at-startup "noctalia" "--daemon"|' "${dir}/etc/config.kdl"
+	printf '\ninclude "omadora-binds.kdl"\n\ninclude "omadora-look.kdl"\n\ninclude "~/.config/niri/noctalia.kdl"\n' >>"${dir}/etc/config.kdl"
+	cp -rT "${SCRIPT_DIR}/../../custom/files/usr/share/omadora/skel" "${dir}/home"
+	HOME="${dir}/home" run niri validate -c "${dir}/etc/config.kdl"
+	[ "$status" -eq 0 ]
+}
