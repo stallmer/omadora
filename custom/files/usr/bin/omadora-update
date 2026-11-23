@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Update Omadora: the system image, Flatpaks and Homebrew (through uupd), then
-# the dotfiles.
+# your dotfiles repository, if you have set one (omadora-setup <repo>).
 #   omadora-update             update everything
 #   omadora-update --system    only the system image, Flatpaks and Homebrew
-#   omadora-update --dotfiles  only the dotfiles
+#   omadora-update --dotfiles  only your dotfiles repository
 #   omadora-update --reboot    reboot afterwards if a new system image was staged
 set -euo pipefail
 
@@ -119,8 +119,8 @@ fi
 
 if ((do_dotfiles)); then
 	echo "==> Updating the dotfiles"
-	omadora-setup || {
-		echo "omadora-update: the dotfiles update failed; 'omadora-setup --force' overwrites local changes" >&2
+	omadora-setup --update || {
+		echo "omadora-update: the dotfiles update failed; 'omadora-setup --update --force' overwrites local changes" >&2
 		exit 1
 	}
 fi

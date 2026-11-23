@@ -92,7 +92,7 @@ STUB
 	mapfile -t calls <"${CALL_LOG}"
 	[ "${calls[0]}" = "systemctl start uupd.service" ]
 	[ "${calls[1]}" = "bootc status --json" ]
-	[ "${calls[2]}" = "omadora-setup " ]
+	[ "${calls[2]}" = "omadora-setup --update" ]
 	[[ "$output" == *"Up to date"* ]]
 }
 
@@ -106,7 +106,7 @@ STUB
 @test "omadora-update: --dotfiles skips the system update" {
 	run "${UPDATE_SRC}" --dotfiles
 	[ "$status" -eq 0 ]
-	[ "$(cat "${CALL_LOG}")" = "omadora-setup " ]
+	[ "$(cat "${CALL_LOG}")" = "omadora-setup --update" ]
 }
 
 @test "omadora-update: --system and --dotfiles together exit 2 and run nothing" {
@@ -243,5 +243,5 @@ STUB
 @test "omadora-update: a failed dotfiles update exits 1 and suggests --force" {
 	SETUP_FAIL=1 run "${UPDATE_SRC}"
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"omadora-setup --force"* ]]
+	[[ "$output" == *"omadora-setup --update --force"* ]]
 }

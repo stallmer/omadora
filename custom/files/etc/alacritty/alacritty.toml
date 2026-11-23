@@ -1,0 +1,18 @@
+# Omadora default Alacritty config. Alacritty reads only the first config file it
+# finds, so a ~/.config/alacritty/alacritty.toml replaces this one; to keep these
+# defaults, start yours with the import line in
+# /usr/share/omadora/examples/alacritty.toml. Colors come from Noctalia, which
+# renders the file imported below whenever the theme changes (switch with
+# `omadora-theme-set`).
+
+[general]
+import = ["~/.config/alacritty/themes/noctalia.toml"]
+
+[window]
+padding = { x = 8, y = 8 }
+
+[font]
+size = 11.0
+
+[font.normal]
+family = "JetBrainsMono Nerd Font"

@@ -1,0 +1,7 @@
+// Omadora look, included from /etc/niri/config.kdl.
+// Round the border and focus ring to match the windows' rounded corners, and clip
+// window contents to that shape so square-cornered apps match too.
+window-rule {
+    geometry-corner-radius 12
+    clip-to-geometry true
+}
