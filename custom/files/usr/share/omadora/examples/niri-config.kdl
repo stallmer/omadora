@@ -1,0 +1,13 @@
+// Copy this to ~/.config/niri/config.kdl to customize Niri. Niri reads that file
+// instead of /etc/niri/config.kdl, so keep the include below to keep Omadora's
+// defaults (they update with the system). Your settings go below it.
+include "/etc/niri/config.kdl"
+
+// Example: make Caps Lock an additional Ctrl key.
+// input {
+//     keyboard {
+//         xkb {
+//             options "ctrl:nocaps"
+//         }
+//     }
+// }
