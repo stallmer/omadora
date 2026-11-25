@@ -97,6 +97,16 @@ if ((do_system)); then
 		sleep "${retry_delay}"
 	done
 
+	# uupd.service has ConditionACPower=true, so on battery systemd skips it and
+	# `systemctl start` still succeeds. Without this check the script would find
+	# nothing staged and report "Up to date" although no update check ran.
+	condition_result="$(systemctl show uupd.service -p ConditionResult --value 2>/dev/null || true)"
+	if [[ "${condition_result}" == "no" ]]; then
+		echo "omadora-update: systemd skipped uupd because a start condition was not met (usually the machine is on battery: uupd needs AC power)." >&2
+		echo "omadora-update: plug in and run omadora-update again, or run 'sudo bootc upgrade' to update the system image on battery." >&2
+		exit 1
+	fi
+
 	if ! boot_status_raw="$(sudo bootc status --json)"; then
 		echo "omadora-update: 'bootc status' failed, so I cannot tell whether a new system image is staged" >&2
 		exit 1
