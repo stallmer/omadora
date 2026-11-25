@@ -11,7 +11,9 @@
 # not start with a JSON object, as the real jq would.
 # After a failed start the script reads `systemctl show uupd.service`: ACTIVE_SEQ is a
 # space-separated list of ActiveState values, one per check (the last repeats), and
-# RESULT is the Result value (default success).
+# RESULT is the Result value (default success). After the start it also reads
+# ConditionResult: CONDITION_RESULT=no simulates systemd skipping the unit because
+# a start condition was unmet, such as ConditionACPower on battery (default yes).
 #
 # Run with: bats tests/template/omadora-update_test.bats
 
@@ -41,6 +43,7 @@ if [ "$1" = "show" ]; then
       [ "${idx}" -ge "${#seq[@]}" ] && idx=$((${#seq[@]} - 1))
       echo "${seq[${idx}]}" ;;
     *"-p Result"*) echo "${RESULT:-success}" ;;
+    *"-p ConditionResult"*) echo "${CONDITION_RESULT:-yes}" ;;
   esac
   exit 0
 fi
@@ -91,8 +94,9 @@ STUB
 	[ "$status" -eq 0 ]
 	mapfile -t calls <"${CALL_LOG}"
 	[ "${calls[0]}" = "systemctl start uupd.service" ]
-	[ "${calls[1]}" = "bootc status --json" ]
-	[ "${calls[2]}" = "omadora-setup --update" ]
+	[ "${calls[1]}" = "systemctl show uupd.service -p ConditionResult --value" ]
+	[ "${calls[2]}" = "bootc status --json" ]
+	[ "${calls[3]}" = "omadora-setup --update" ]
 	[[ "$output" == *"Up to date"* ]]
 }
 
@@ -244,4 +248,22 @@ STUB
 	SETUP_FAIL=1 run "${UPDATE_SRC}"
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"omadora-setup --update --force"* ]]
+}
+
+@test "omadora-update: a unit skipped by an unmet start condition (on battery) is an error, not 'Up to date'" {
+	CONDITION_RESULT=no run "${UPDATE_SRC}"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"on battery"* ]]
+	[[ "$output" == *"sudo bootc upgrade"* ]]
+	[[ "$output" != *"Up to date"* ]]
+	run grep -c "bootc status" "${CALL_LOG}"
+	[ "$output" = "0" ]
+	run grep -c omadora-setup "${CALL_LOG}"
+	[ "$output" = "0" ]
+}
+
+@test "omadora-update: --system on battery also stops with the battery error" {
+	CONDITION_RESULT=no run "${UPDATE_SRC}" --system
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"plug in"* ]]
 }
