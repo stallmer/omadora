@@ -22,7 +22,7 @@ hardware support and no desktop) and includes these customizations:
   shell: bar, launcher, notifications, lock screen, wallpaper, idle and night
   light), `sddm` with the Wayland greeter (`sddm-wayland-generic`)
 - **Portals and keyring**: `xdg-desktop-portal-gnome`, `xdg-desktop-portal-gtk`,
-  `gnome-keyring`
+  `gnome-keyring`, `gnome-keyring-pam` (unlocks the keyring at login)
 - **Other**: `xwayland-satellite` (X11 apps), `power-profiles-daemon`,
   `alacritty` (terminal), `chezmoi` (for your own dotfiles)
 - **Everyday apps**: `nautilus` (file manager), `imv` (image viewer),

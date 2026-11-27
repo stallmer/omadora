@@ -15,6 +15,8 @@ set -euo pipefail
 #                               avoids pulling in Xorg
 #   xdg-desktop-portal-gnome    Niri's screencast portal (-gtk for file pickers)
 #   gnome-keyring               Secret Service provider Noctalia wants
+#   gnome-keyring-pam           pam_gnome_keyring.so; unlocks the keyring at SDDM
+#                               login (the sddm PAM stack skips it when absent)
 #   xwayland-satellite          X11 app support for Niri
 #
 # Noctalia handles idle (lock, screen off, suspend) and night light itself, so
@@ -39,6 +41,7 @@ dnf5 install -y \
 	xdg-desktop-portal-gnome \
 	xdg-desktop-portal-gtk \
 	gnome-keyring \
+	gnome-keyring-pam \
 	xwayland-satellite \
 	power-profiles-daemon \
 	alacritty \
