@@ -123,6 +123,13 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/27-fonts.sh
 
+### SDDM THEME
+## Installs the Noctalia-style login screen theme from the pinned upstream commit.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/32-sddm-theme.sh
+
 ### DESKTOP
 ## Installs the Niri compositor and Noctalia shell and enables SDDM.
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
