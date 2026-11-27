@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Update the login screen theme settings. Runs as root through pkexec; see
+# org.omadora.sddm-theme.policy. Input is checked against a fixed list, so the
+# caller cannot write anything else into the file.
+#   omadora-sddm-theme scheme <name>   set colorScheme to a bundled palette
+#   omadora-sddm-theme mode <dark|light>   set darkMode
+set -euo pipefail
+
+# OMADORA_SDDM_CONF is for tests. pkexec clears the environment, so it cannot
+# redirect the privileged run.
+conf="${OMADORA_SDDM_CONF:-/etc/omadora/sddm-theme.conf}"
+schemes=(Ayu Catppuccin Dracula Eldritch Gruvbox Kanagawa Noctalia-default Nord Rosepine Tokyo-Night)
+
+usage() {
+	echo "usage: omadora-sddm-theme scheme <name> | mode <dark|light>" >&2
+	exit 2
+}
+
+set_key() {
+	local key="$1" value="$2" tmp
+	[[ -f "${conf}" ]] || {
+		echo "omadora-sddm-theme: ${conf} not found" >&2
+		exit 1
+	}
+	tmp="$(mktemp "${conf}.XXXXXX")"
+	if grep -q "^${key}=" "${conf}"; then
+		sed "s|^${key}=.*|${key}=${value}|" "${conf}" >"${tmp}"
+	else
+		{
+			cat "${conf}"
+			printf '%s=%s\n' "${key}" "${value}"
+		} >"${tmp}"
+	fi
+	chmod 0644 "${tmp}"
+	mv -f "${tmp}" "${conf}"
+}
+
+[[ $# -eq 2 ]] || usage
+case "$1" in
+	scheme)
+		for s in "${schemes[@]}"; do
+			if [[ "$2" == "${s}" ]]; then
+				set_key colorScheme "\"${s}\""
+				exit 0
+			fi
+		done
+		echo "omadora-sddm-theme: unknown scheme '$2'" >&2
+		exit 2
+		;;
+	mode)
+		case "$2" in
+			dark) set_key darkMode true ;;
+			light) set_key darkMode false ;;
+			*)
+				echo "omadora-sddm-theme: the mode must be dark or light" >&2
+				exit 2
+				;;
+		esac
+		;;
+	*) usage ;;
+esac

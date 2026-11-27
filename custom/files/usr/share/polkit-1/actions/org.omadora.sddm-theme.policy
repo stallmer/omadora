@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+
+<policyconfig>
+  <vendor>Omadora</vendor>
+  <vendor_url>https://github.com/stallmer/omadora</vendor_url>
+
+  <!-- The helper only accepts a palette name from a fixed list and a dark or
+       light mode, and only edits the login screen's colour settings, so a
+       local session may run it without a password. -->
+  <action id="org.omadora.sddm-theme.set">
+    <description>Change the login screen theme</description>
+    <message>Authentication is required to change the login screen theme</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/omadora-sddm-theme</annotate>
+  </action>
+</policyconfig>

@@ -4,6 +4,8 @@
 #   omadora-theme-set --list         list the available themes
 #   omadora-theme-set <name>         switch to a bundled theme (case and spacing are ignored)
 #   omadora-theme-set --mode <mode>  set the mode: dark, light or auto
+# The login screen follows too: the theme name and the mode are copied to the
+# SDDM theme (auto becomes dark there, because the login screen has no clock).
 set -euo pipefail
 
 themes=(Ayu Catppuccin Dracula Eldritch Gruvbox Kanagawa Noctalia Nord "Rosé Pine" Tokyo-Night)
@@ -11,6 +13,15 @@ themes=(Ayu Catppuccin Dracula Eldritch Gruvbox Kanagawa Noctalia Nord "Rosé Pi
 # Lowercase, drop spaces and hyphens, and fold the accent so "rose pine" matches "Rosé Pine".
 normalize() {
 	printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/é/e/g; s/[ -]//g'
+}
+
+# Copy a setting to the login screen theme. The helper runs as root through
+# pkexec (org.omadora.sddm-theme.set). A failure only warns: Noctalia has
+# already switched, and the login screen keeps its old colours.
+sync_login_screen() {
+	if ! pkexec /usr/libexec/omadora-sddm-theme "$1" "$2"; then
+		echo "omadora-theme-set: could not update the login screen theme" >&2
+	fi
 }
 
 usage() {
@@ -23,7 +34,7 @@ case "${1:-}" in
 		noctalia msg theme-mode-get
 		;;
 	-h | --help)
-		sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
+		sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//'
 		;;
 	--list)
 		printf '%s\n' "${themes[@]}"
@@ -31,7 +42,10 @@ case "${1:-}" in
 	--mode)
 		mode="${2:-}"
 		case "${mode}" in
-			dark | light | auto) noctalia msg theme-mode-set "${mode}" ;;
+			dark | light | auto)
+				noctalia msg theme-mode-set "${mode}"
+				sync_login_screen mode "${mode/auto/dark}"
+				;;
 			*)
 				echo "omadora-theme-set: the mode must be dark, light or auto" >&2
 				exit 2
@@ -47,6 +61,13 @@ case "${1:-}" in
 		for theme in "${themes[@]}"; do
 			if [[ "$(normalize "${theme}")" == "${wanted}" ]]; then
 				noctalia msg color-scheme-set builtin "${theme}"
+				# The login screen theme names differ for two palettes.
+				case "${theme}" in
+					"Rosé Pine") sddm_scheme="Rosepine" ;;
+					Noctalia) sddm_scheme="Noctalia-default" ;;
+					*) sddm_scheme="${theme}" ;;
+				esac
+				sync_login_screen scheme "${sddm_scheme}"
 				exit 0
 			fi
 		done

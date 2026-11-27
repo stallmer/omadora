@@ -19,8 +19,16 @@ setup() {
 printf '%s\n' "$*" >> "${CALL_LOG}"
 STUB
 	chmod +x "${STUB_BIN}/noctalia"
+	# pkexec is stubbed too, so a test never runs the real privileged helper.
+	cat >"${STUB_BIN}/pkexec" <<'STUB'
+#!/usr/bin/bash
+printf '%s\n' "$*" >> "${PKEXEC_LOG}"
+exit "${PKEXEC_STATUS:-0}"
+STUB
+	chmod +x "${STUB_BIN}/pkexec"
 	export PATH="${STUB_BIN}:${PATH}"
-	export CALL_LOG
+	PKEXEC_LOG="${TEST_ROOT}/pkexec.log"
+	export CALL_LOG PKEXEC_LOG
 }
 
 @test "omadora-theme-set: a theme name switches to that bundled palette" {
@@ -99,4 +107,44 @@ STUB
 	default="$(grep -E '^builtin = ' "${NOCTALIA_TOML}" | sed -E 's/^builtin = "(.*)"$/\1/')"
 	run "${THEME_SRC}" --list
 	[[ "$output" == *"${default}"* ]]
+}
+
+@test "omadora-theme-set: a theme name also updates the login screen theme" {
+	run "${THEME_SRC}" Gruvbox
+	[ "$status" -eq 0 ]
+	[ "$(cat "${PKEXEC_LOG}")" = "/usr/libexec/omadora-sddm-theme scheme Gruvbox" ]
+}
+
+@test "omadora-theme-set: Rosé Pine and Noctalia use the login theme's own names" {
+	run "${THEME_SRC}" rosepine
+	[ "$status" -eq 0 ]
+	run "${THEME_SRC}" noctalia
+	[ "$status" -eq 0 ]
+	[ "$(sed -n 1p "${PKEXEC_LOG}")" = "/usr/libexec/omadora-sddm-theme scheme Rosepine" ]
+	[ "$(sed -n 2p "${PKEXEC_LOG}")" = "/usr/libexec/omadora-sddm-theme scheme Noctalia-default" ]
+}
+
+@test "omadora-theme-set: --mode updates the login screen, and auto becomes dark" {
+	run "${THEME_SRC}" --mode light
+	[ "$status" -eq 0 ]
+	run "${THEME_SRC}" --mode auto
+	[ "$status" -eq 0 ]
+	[ "$(sed -n 1p "${PKEXEC_LOG}")" = "/usr/libexec/omadora-sddm-theme mode light" ]
+	[ "$(sed -n 2p "${PKEXEC_LOG}")" = "/usr/libexec/omadora-sddm-theme mode dark" ]
+	[ "$(sed -n 2p "${CALL_LOG}")" = "msg theme-mode-set auto" ]
+}
+
+@test "omadora-theme-set: a login screen failure warns but keeps the Noctalia change" {
+	PKEXEC_STATUS=126 run "${THEME_SRC}" Nord
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"could not update the login screen theme"* ]]
+	[ "$(cat "${CALL_LOG}")" = "msg color-scheme-set builtin Nord" ]
+}
+
+@test "omadora-theme-set: an unknown theme and --list never touch the login screen" {
+	run "${THEME_SRC}" bogus
+	[ "$status" -eq 2 ]
+	run "${THEME_SRC}" --list
+	[ "$status" -eq 0 ]
+	[ ! -e "${PKEXEC_LOG}" ]
 }

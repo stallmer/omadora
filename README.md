@@ -27,6 +27,9 @@ hardware support and no desktop) and includes these customizations:
   `alacritty` (terminal), `chezmoi` (for your own dotfiles)
 - **Everyday apps**: `nautilus` (file manager), `imv` (image viewer),
   `system-config-printer` (printer setup)
+- **Login screen**: the Noctalia-style SDDM theme
+  ([sddm-noctalia-theme](https://github.com/ClementFombonne/sddm-noctalia-theme),
+  pinned by commit and checksum), which follows `omadora-theme-set`
 - **Fonts**: JetBrains Mono Nerd Font (from the Nerd Fonts release, pinned by
   checksum; Fedora has no Nerd Font package)
 - **Gaming**: `steam` and `steam-devices`, installed from the negativo17
