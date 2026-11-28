@@ -149,6 +149,16 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build/35-macbook-audio.sh
 
+### TAILSCALE
+## Installs Tailscale from the vendor repository and enables tailscaled. Joining
+## a tailnet is a first-boot action; the image holds no auth key.
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=cache,dst=/var/cache/libdnf5 \
+    --mount=type=cache,dst=/var/cache/rpm-ostree \
+    --mount=type=tmpfs,dst=/boot \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/build/30-tailscale.sh
+
 ### CLEANUP
 ## Finalises package and Flatpak sources, then prunes build artifacts before
 ## linting. /run is deliberately not mounted as tmpfs here: the script must

@@ -14,6 +14,7 @@ prefix auto-discovery. The numbers communicate intent.
 | `25-steam.sh` | Installs Steam and `steam-devices` from the negativo17 repository that `base-main` enables during the build (`90-cleanup.sh` disables it again). A separate phase so the large layer stays stable. |
 | `27-fonts.sh` | Installs the JetBrains Mono Nerd Font from the Nerd Fonts release, pinned by version and sha256 (Fedora has no Nerd Font package). |
 | `30-desktop.sh` | Installs the Niri compositor, the Noctalia shell, SDDM and the desktop support packages, ships `/etc/niri/config.kdl` with Noctalia autostart, and enables SDDM. |
+| `30-tailscale.sh` | Installs Tailscale from the vendor RPM repository (removed again after install) and enables `tailscaled`. Joining a tailnet is a first-boot action; the image holds no auth key. |
 | `32-sddm-theme.sh` | Installs the Noctalia-style SDDM login theme from a pinned upstream commit (sha256-checked) and links its settings file to `/etc/omadora/sddm-theme.conf`, which `omadora-theme-set` updates through a polkit helper. |
 | `35-macbook-audio.sh` | Builds the patched Cirrus CS4208 audio module for the 12" MacBook against the image's kernel and installs it in `/usr/lib/modules/<kernel>/updates`. The driver is pinned by commit and sha256. Machines without that codec never load it. |
 | `90-cleanup.sh` | Finalises package and Flatpak sources, prunes build artifacts, and prepares for `bootc container lint`. |
@@ -25,7 +26,6 @@ Helpers, not phases: `copr-helpers.sh` (sourced), `validate-brewfiles.sh`, and
 
 Inactive until you activate them:
 
-- `30-tailscale.sh.example` — a third-party RPM repository done safely
 - `40-gnome-extensions.sh.example` — GNOME Shell extensions with a dconf override
 - `50-nvidia.sh.example` — NVIDIA drivers and CDI container support
 - `60-desktop-swap.sh.example` — replacing the GNOME desktop
