@@ -72,7 +72,7 @@ jobs:
         # Luau interpreter.
         env:
           # renovate: datasource=github-releases depName=luau-lang/luau
-          LUAU_VERSION: "0.744"
+          LUAU_VERSION: "0.748"
           # sha256 of luau-ubuntu.zip for that release; update it with the version.
           LUAU_SHA256: "6506f0852c623aaffcb28494aac16c26dc04a269ea0e16cc0aafc8c8ac79f3ec"
         run: |
