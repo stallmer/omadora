@@ -122,11 +122,11 @@ setup() {
 }
 
 @test "90-cleanup.sh still disables tailscale.repo as the documented backstop" {
-    # 30-tailscale.sh.example tells the reader that 90-cleanup.sh disables
+    # 30-tailscale.sh tells the reader that 90-cleanup.sh disables
     # tailscale.repo as a backstop. Dropping tailscale from that loop makes the
     # example's promise false without touching the example.
     grep -qF "90-cleanup.sh also disables tailscale.repo" \
-        "${BUILD_DIR}/30-tailscale.sh.example"
+        "${BUILD_DIR}/30-tailscale.sh"
     grep -qE '^for repo_name in .*[[:space:]]tailscale([[:space:]]|;)' "${CLEANUP}"
 }
 
