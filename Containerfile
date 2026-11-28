@@ -51,7 +51,7 @@ COPY --from=brew /system_files /oci/brew
 
 # Base Image - Fedora Atomic plus uBlue hardware support (akmods, signing, ujust), no desktop
 # Renovate will keep the digest pin up to date.
-FROM ghcr.io/ublue-os/base-main:44@sha256:009e17934aa96603d714a3ced2fae99a7af2a33152c0998ca92fcdf26fa6408a
+FROM ghcr.io/ublue-os/base-main:44@sha256:9246244f0934e3df8b7bc2327345c8a54891a8cea7f5bb8ea6841aeab807fc5d
 
 # Image identity - these define how bootc, fastfetch, and the ublue ecosystem
 # recognize your image. Change these to match your project name.
